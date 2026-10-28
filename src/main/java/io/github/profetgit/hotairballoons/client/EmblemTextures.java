@@ -15,14 +15,19 @@ import org.jspecify.annotations.Nullable;
 /**
  * Envelope-sized textures for a banner emblem, made at runtime: textures/entity/hot_air_balloon_emblem_map.png says
  * which banner flag pixel each envelope texel shows (dev/art/emblem_map.py), and each banner pattern's own texture
- * supplies the shape, so modded patterns work and no vanilla texture ships with the mod. Rebuilt after a reload.
+ * supplies the shape, so modded patterns work and no vanilla texture ships with the mod. Every layer is shaded like the
+ * envelope under it (its greyscale textures), so the emblem reads as painted on. Rebuilt after a reload.
  */
 final class EmblemTextures {
     private static final Identifier MAP = HotAirBalloons.id("textures/entity/hot_air_balloon_emblem_map.png");
+    /** The envelope's own greyscale textures: the emblem takes their shading so it doesn't show as a flat patch. */
+    private static final Identifier[] SHADING = {HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png"),
+        HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes.png")};
     /** Flag front in a 64x64 banner pattern texture (vanilla BannerFlagModel: 20x40x1 box at texture offset 0,0). */
     private static final int FLAG_X = 1, FLAG_Y = 1;
     private static final Map<Identifier, Identifier> MADE = new HashMap<>();
     private static int @Nullable [] map;
+    private static int[] shade = new int[0];
     private static int width, height;
     private static @Nullable Identifier base;
     private static boolean broken;
@@ -77,6 +82,17 @@ final class EmblemTextures {
                     map[x + y * width] = ARGB.alpha(c) == 0 ? -1 : (ARGB.red(c) << 8) | ARGB.green(c);
                 }
             }
+            shade = new int[width * height];
+            java.util.Arrays.fill(shade, 255);
+            for (Identifier id : SHADING) {
+                try (NativeImage s = read(id)) {
+                    if (s.getWidth() != width || s.getHeight() != height) continue;
+                    for (int i = 0; i < shade.length; i++) {
+                        int c = s.getPixel(i % width, i / width);
+                        if (ARGB.alpha(c) > 0) shade[i] = ARGB.red(c);
+                    }
+                }
+            }
             return true;
         } catch (IOException e) {
             HotAirBalloons.LOG.error("Balloon emblem map missing", e);
@@ -89,7 +105,7 @@ final class EmblemTextures {
         NativeImage out = new NativeImage(width, height, true);
         for (int i = 0; i < map.length; i++) {
             int uv = map[i];
-            if (uv >= 0) out.setPixel(i % width, i / width, sample.at(uv >> 8, uv & 0xFF));
+            if (uv >= 0) out.setPixel(i % width, i / width, ARGB.scaleRGB(sample.at(uv >> 8, uv & 0xFF), shade[i] / 255.0F));
         }
         Identifier id = HotAirBalloons.id("dynamic/emblem/" + name);
         Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(id::toString, out));
