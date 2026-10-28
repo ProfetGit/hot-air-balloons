@@ -18,6 +18,6 @@ public class BalloonRenderState extends EntityRenderState {
     public final net.minecraft.resources.Identifier[] emblemTextures = new net.minecraft.resources.Identifier[1 + io.github.profetgit.hotairballoons.entity.EnvelopeLook.MAX_LAYERS];
     public final int[] emblemColors = new int[1 + io.github.profetgit.hotairballoons.entity.EnvelopeLook.MAX_LAYERS];
     public int emblemCount;
-    /** The chest strapped to the basket's back wall; empty without one. */
+    /** The chest in the basket's back corner; empty without one. */
     public final BlockModelRenderState chest = new BlockModelRenderState();
 }

@@ -3,7 +3,8 @@
 Each envelope texel on the outermost front (+z) or back (-z) face inside the emblem rectangle gets R = banner flag
 column (0..19), G = flag row (0..39), A = 255; the back is mirrored so both read correctly from outside. The client
 (EmblemTextures) turns this map plus a banner pattern texture into a tinted envelope layer, so no vanilla texture
-ships in the jar. The emblem is the banner's own 20x40 pixels at one texel per model unit, centred on the belly.
+ships in the jar. The emblem is the banner's 20x40 pixels at 2x2 texels each (40x80 model units, 2.5 x 5 blocks;
+user, 2026-10-28: bigger), on the envelope's belly where the front faces are at least 40 units wide.
 """
 import json
 from pathlib import Path
@@ -12,10 +13,11 @@ from PIL import Image
 
 HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "src/main/resources/assets/hotairballoons/textures/entity/hot_air_balloon_emblem_map.png"
-W, H = 20, 40
-Y_TOP = 141
-# Step faces at least this far out (the emblem rows' front faces sit at depth 37..40).
-STEP_DEPTH = 37
+S = 2
+W, H = 20 * S, 40 * S
+Y_TOP = 169
+# Step faces at least this far out (the emblem rows' front faces sit at depth 36..48).
+STEP_DEPTH = 36
 
 
 def main():
@@ -56,13 +58,13 @@ def main():
         u = x + W // 2 if side > 0 else W // 2 - 1 - x
         v = Y_TOP - 1 - y
         if 0 <= u < W and 0 <= v < H:
-            px[i, j] = (u, v, 0, 255)
+            px[i, j] = (u // S, v // S, 0, 255)
             hits[side] += 1
     for side, x, y, i, j in steps:
         u = x + W // 2 if side > 0 else W // 2 - 1 - x
         v = Y_TOP - 1 - y
         if 0 <= u < W and 0 <= v < H and px[i, j][3] == 0:
-            px[i, j] = (u, v, 0, 255)
+            px[i, j] = (u // S, v // S, 0, 255)
     img.save(OUT)
     print(f"{OUT.name}: front {hits[1]} / back {hits[-1]} of {W * H} texels each")
 

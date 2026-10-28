@@ -15,6 +15,13 @@ HERE = Path(__file__).parent
 BODY = [(68, 74, 20), (74, 82, 25), (82, 90, 30), (90, 100, 34), (100, 110, 37), (110, 120, 39), (120, 134, 40),
         (134, 142, 39), (142, 148, 36), (148, 152, 31), (152, 155, 25), (155, 157, 16)]
 SKIRT = [(58, 63, 14), (63, 68, 18)]
+# Envelope and skirt scaled up about the skirt hem (user, 2026-10-28: "a little bit bigger"), whole units only.
+SCALE = 1.2
+HEM = 58
+
+
+def scaled(rows):
+    return [(round(HEM + (y0 - HEM) * SCALE), round(HEM + (y1 - HEM) * SCALE), round(h * SCALE)) for y0, y1, h in rows]
 
 
 def rounded(prefix, i, y0, y1, h):
@@ -50,10 +57,10 @@ def groups():
     ]
     rigging = [(f"rope_{i}", (sx * 11.5 - 0.5, 40, sz * 11.5 - 0.5), (sx * 11.5 + 0.5, 58, sz * 11.5 + 0.5))
                for i, (sx, sz) in enumerate([(1, -1), (1, 1), (-1, 1), (-1, -1)])]
-    for i, (y0, y1, h) in enumerate(SKIRT):
+    for i, (y0, y1, h) in enumerate(scaled(SKIRT)):
         rigging += rounded("skirt", i, y0, y1, h)
     envelope = []
-    for i, (y0, y1, h) in enumerate(BODY):
+    for i, (y0, y1, h) in enumerate(scaled(BODY)):
         envelope += rounded("env", i, y0, y1, h)
     flame = [("flame_outer", (-3, 45, -3), (3, 61, 3)), ("flamecore_0", (-1.5, 45, -1.5), (1.5, 55, 1.5))]
     pilot = [("pilot_0", (-1, 45, -1), (1, 47, 1))]

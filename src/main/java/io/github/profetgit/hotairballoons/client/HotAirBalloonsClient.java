@@ -62,12 +62,12 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         double theta = rnd.nextDouble() * Math.PI * 2;
         double cosPhi = rnd.nextDouble() * 2 - 1;
         double sinPhi = Math.sqrt(1 - cosPhi * cosPhi);
-        double r = 3.0 + rnd.nextDouble() * 2.0;
+        double r = 3.6 + rnd.nextDouble() * 2.4;
         double x = b.getX() + r * sinPhi * Math.cos(theta);
-        double y = b.getY() + 6.4 + Math.min(r * cosPhi, 3.0) * 1.0;
+        double y = b.getY() + 7.4 + Math.min(r * cosPhi, 3.6);
         double z = b.getZ() + r * sinPhi * Math.sin(theta);
         double k = 1.5 + rnd.nextDouble();
-        level.addParticle(ModContent.WIND_WISP, x, Mth.clamp(y, b.getY() + 3.4, b.getY() + 9.4), z, wind.x * k, 0.0, wind.z * k);
+        level.addParticle(ModContent.WIND_WISP, x, Mth.clamp(y, b.getY() + 3.6, b.getY() + 11.4), z, wind.x * k, 0.0, wind.z * k);
     }
 
     private static Input keys() {

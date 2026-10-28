@@ -97,11 +97,21 @@ main.floor = function(p, n, fc, h)
   if math.floor(p[1] + 12) % 4 == 0 then c = 0x4E3822 end
   return hex(c)
 end
+-- Leather rim: one stitch line along the middle of every rim piece, a stitch every 3 texels, the same on all four
+-- sides (the pattern runs along each piece's long axis, so the corners line up).
 main.rim = function(p, n, fc, h)
-  local s = math.floor(along(p, n) + 64)
-  local yy = math.floor(p[2] * (n[2] ~= 0 and 0 or 1)) + (n[2] ~= 0 and math.floor((n[3] ~= 0 and p[3] or (math.abs(fc.box[1][1] - fc.box[2][1]) > 4 and p[3] or p[1])) + 64) or 0)
-  if (s + yy) % 3 == 0 then return hex(LEATHER[1]) end
-  return hex(n[2] > 0 and LEATHER[4] or (h > 0.75 and LEATHER[3] or LEATHER[2]))
+  local b = fc.box
+  local longX = math.abs(b[2][1] - b[1][1]) >= math.abs(b[2][3] - b[1][3])
+  local s = math.floor((longX and p[1] or p[3]) + 64)
+  if n[2] ~= 0 then
+    local across = longX and p[3] or p[1]
+    local mid = longX and (b[1][3] + b[2][3]) / 2 or (b[1][1] + b[2][1]) / 2
+    if math.floor(across + 64) == math.floor(mid + 64) and s % 3 == 0 then return hex(LEATHER[1]) end
+    return hex(n[2] > 0 and LEATHER[4] or LEATHER[2])
+  end
+  if n[1] ~= 0 and longX or n[3] ~= 0 and not longX then return hex(LEATHER[2]) end
+  if math.floor(p[2]) == 15 and s % 3 == 0 then return hex(LEATHER[1]) end
+  return hex(h > 0.75 and LEATHER[3] or LEATHER[2])
 end
 main.upright = function(p, n, fc, h)
   local yy = math.floor(p[2])

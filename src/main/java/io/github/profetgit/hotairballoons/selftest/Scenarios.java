@@ -199,8 +199,8 @@ final class Scenarios {
     }
 
     /**
-     * M4: a sheep walks in first but the player still flies it; a chest from inside the basket goes on the back wall; the
-     * inventory key opens the chest only once there is one; seats fill to 4; contents survive a save/load; mobs ride a
+     * M4: a sheep walks in first but the player still flies it; a chest from inside the basket takes a corner seat; the
+     * inventory key opens the chest only once there is one; seats fill to 3; contents survive a save/load; mobs ride a
      * climb; a cow tied to the balloon is lifted; breaking it drops balloon, chest and contents.
      */
     private static void cargo(Script s) {
@@ -255,7 +255,7 @@ final class Scenarios {
             .waitTicks(10)
             .server(server -> {
                 HotAirBalloon b = serverBalloon(server);
-                SelfTest.record("four seats, chest outside", b.getPassengers().size() == 4 && mobs[1].getVehicle() == b && mobs[2].getVehicle() == b
+                SelfTest.record("chest takes a seat: 3 aboard", b.getPassengers().size() == 3 && mobs[1].getVehicle() == b && mobs[2].getVehicle() == null
                     && mobs[3].getVehicle() == null, "passengers " + b.getPassengers().size() + ", pig " + (mobs[1].getVehicle() == b)
                     + ", chicken " + (mobs[2].getVehicle() == b) + ", rabbit " + (mobs[3].getVehicle() == b));
                 mobs[2].discard();
@@ -334,8 +334,8 @@ final class Scenarios {
                 p.setNoGravity(true);
                 p.setDeltaMovement(Vec3.ZERO);
                 double a = Math.toRadians(b.getYRot());
-                look(p, b.getX() + 3.2 * Math.sin(a) + 1.4 * Math.cos(a), b.getY() + 0.9, b.getZ() - 3.2 * Math.cos(a) + 1.4 * Math.sin(a),
-                    b.getX(), b.getY() + 0.5, b.getZ());
+                look(p, b.getX() - 2.2 * Math.sin(a) + 1.2 * Math.cos(a), b.getY() + 2.4, b.getZ() + 2.2 * Math.cos(a) + 1.2 * Math.sin(a),
+                    b.getX(), b.getY() + 0.4, b.getZ());
             })
             .waitTicks(20)
             .check("chest model resolves", mc -> {

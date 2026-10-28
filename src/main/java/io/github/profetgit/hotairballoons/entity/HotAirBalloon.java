@@ -53,8 +53,8 @@ import org.jspecify.annotations.Nullable;
  * The balloon: a vehicle moved by whoever is authoritative, like a boat (the controlling player's client, else the
  * server). Heat is simulated on both sides from the pilot's keys; the server's copy is synced for everyone else's
  * flame and sound. Wind is computed on the server and synced, since clients don't know the seed. Four riders stand in
- * the basket corners (players or mobs that walk in on the ground); a chest can be strapped to the back wall, opened
- * like a chest boat's (inventory key while riding, sneak-use from outside).
+ * the basket corners (players or mobs that walk in on the ground); a chest can be put in one corner, taking that seat,
+ * opened like a chest boat's (inventory key while riding, sneak-use from outside).
  */
 public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustomInventoryScreen, ContainerEntity {
     private static final EntityDataAccessor<Float> DATA_HEAT = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
@@ -75,6 +75,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     /** Fuel per tick aloft: the pilot light, and the burner on top. */
     public static final float IDLE_USE = 1.0F, BURN_USE = 3.0F;
     public static final int CHEST_SIZE = 27;
+    /** Corner seats in boarding order, without a chest and with one (the chest takes corner 3; the pilot faces it). */
+    private static final int[] SEATS = {0, 1, 2, 3}, SEATS_WITH_CHEST = {1, 0, 2};
     /** Mobs wider than this don't fit in the basket. */
     public static final float MAX_MOB_WIDTH = 1.4F;
     public static final int INFLATE_TICKS = 40;
@@ -84,7 +86,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private static final double RIDE_HEIGHT = 0.6 + 2.0 / 16.0;
     private static final double SEAT_OFFSET = 0.42;
     /** Envelope box relative to the basket floor: skirt hem to crown of dev/art/balloon.bbmodel (16 units per block). */
-    public static final double ENVELOPE_HALF = 40 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 157 / 16.0;
+    public static final double ENVELOPE_HALF = 48 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 177 / 16.0;
     /** Slack rope length before the tether pulls; vanilla's lead snaps at 12. */
     public static final double ROPE = 8.0;
 
@@ -366,9 +368,9 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /** Server, on the ground: mobs that walk into the basket climb in, like boats take them (players board by click). */
     private void boardMobs() {
-        if (getPassengers().size() >= MAX_PASSENGERS) return;
+        if (getPassengers().size() >= seats()) return;
         for (Entity e : level().getEntities(this, getBoundingBox().inflate(0.2, -0.01, 0.2), EntitySelector.pushableBy(this))) {
-            if (getPassengers().size() >= MAX_PASSENGERS) return;
+            if (getPassengers().size() >= seats()) return;
             if (e instanceof LivingEntity && !(e instanceof Player) && !e.isPassenger() && !e.hasPassenger(this)
                 && !e.is(EntityTypeTags.CANNOT_BE_PUSHED_ONTO_BOATS) && e.getBbWidth() < MAX_MOB_WIDTH && !(e instanceof Leashable l && l.isLeashed())) {
                 e.startRiding(this);
@@ -386,7 +388,12 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     protected boolean canAddPassenger(Entity passenger) {
-        return getPassengers().size() < MAX_PASSENGERS;
+        return getPassengers().size() < seats();
+    }
+
+    /** Four, or three with a chest in the basket. */
+    public int seats() {
+        return hasChest() ? SEATS_WITH_CHEST.length : MAX_PASSENGERS;
     }
 
     /** The pilot: the first player aboard, so a sheep that walked in first doesn't take the controls. */
@@ -399,10 +406,12 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     @Override
     protected Vec3 getPassengerAttachmentPoint(Entity passenger, EntityDimensions dimensions, float scale) {
         int i = getPassengers().indexOf(passenger);
+        int[] order = hasChest() ? SEATS_WITH_CHEST : SEATS;
         double x = 0, z = 0;
-        if (getPassengers().size() > 1 && i >= 0) {
-            x = (i == 1 || i == 2) ? SEAT_OFFSET : -SEAT_OFFSET;
-            z = (i >= 2) ? -SEAT_OFFSET : SEAT_OFFSET;
+        if ((getPassengers().size() > 1 || hasChest()) && i >= 0 && i < order.length) {
+            int c = order[i];
+            x = (c == 1 || c == 2) ? SEAT_OFFSET : -SEAT_OFFSET;
+            z = (c >= 2) ? -SEAT_OFFSET : SEAT_OFFSET;
         }
         return new Vec3(x, RIDE_HEIGHT, z).yRot(-getYRot() * Mth.DEG_TO_RAD);
     }
@@ -439,6 +448,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             return InteractionResult.SUCCESS_SERVER;
         }
         if (!hasChest() && held.is(Items.CHEST) && !player.isSecondaryUseActive()) {
+            if (getPassengers().size() > SEATS_WITH_CHEST.length) return InteractionResult.PASS;
             if (!level().isClientSide()) {
                 setChest(true);
                 held.consume(1, player);

@@ -24,16 +24,19 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Basket, emissive flame, the envelope drawn twice (base gores in the base dye, stripe gores in the stripe dye), then
- * one envelope pass per emblem layer ({@link EmblemTextures}), and the chest on the back wall.
+ * one envelope pass per emblem layer ({@link EmblemTextures}), and the chest in the basket's back corner.
  */
 public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRenderState> {
     private static final Identifier TEXTURE = HotAirBalloons.id("textures/entity/hot_air_balloon.png");
     private static final Identifier ENVELOPE = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png");
     private static final Identifier STRIPES = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes.png");
     private static final BlockDisplayContext CHEST_CONTEXT = BlockDisplayContext.create();
-    /** Strapped to the outside of the basket's back wall, lid outward (renderer +z is behind the pilot). */
-    private static final BlockState CHEST = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.SOUTH);
-    private static final float CHEST_SCALE = 0.625F, CHEST_WALL = 14 / 16.0F;
+    /**
+     * In the basket's back corner (seat corner 3; renderer space is the entity's turned 180 degrees), facing the pilot,
+     * filling the corner so the lid sits level with the wall top and shows over the rim.
+     */
+    private static final BlockState CHEST = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.NORTH);
+    private static final float CHEST_SCALE = 0.75F;
     private final BalloonModel model, flame, envelope;
     private final BlockModelResolver blocks;
 
@@ -54,7 +57,7 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         if (hurt > 0.0F) poseStack.rotateDegrees(Axis.XP, Mth.sin(hurt) * hurt * state.damageTime / 40.0F * state.hurtDir);
         if (!state.chest.isEmpty()) {
             poseStack.pushPose();
-            poseStack.translate(-CHEST_SCALE / 2, 2 / 16.0F, CHEST_WALL);
+            poseStack.translate(0, 2 / 16.0F, 0);
             poseStack.scale(CHEST_SCALE, CHEST_SCALE, CHEST_SCALE);
             state.chest.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
             poseStack.popPose();
