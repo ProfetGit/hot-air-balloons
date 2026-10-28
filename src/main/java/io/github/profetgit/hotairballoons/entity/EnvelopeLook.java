@@ -43,6 +43,16 @@ public record EnvelopeLook(DyeColor base, DyeColor stripes, Optional<DyeColor> e
         return new EnvelopeLook(base, c, emblemBase, emblem);
     }
 
+    /**
+     * A banner put on the balloon: the envelope takes the banner's colours (base gores = the banner's base colour,
+     * stripes = its first pattern colour that differs from it) and its patterns become the emblem, so the logo sits on
+     * the envelope instead of on a patch of another colour. Dyes still recolour the envelope afterwards.
+     */
+    public EnvelopeLook wearing(DyeColor bannerBase, BannerPatternLayers patterns) {
+        DyeColor accent = patterns.layers().stream().map(BannerPatternLayers.Layer::color).filter(c -> c != bannerBase).findFirst().orElse(bannerBase);
+        return new EnvelopeLook(bannerBase, accent, emblemBase, emblem).withEmblem(bannerBase, patterns);
+    }
+
     public EnvelopeLook withEmblem(DyeColor bannerBase, BannerPatternLayers patterns) {
         var layers = patterns.layers();
         if (layers.size() > MAX_LAYERS) layers = layers.subList(0, MAX_LAYERS);
