@@ -16,6 +16,8 @@ public final class HotAirBalloons implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        ModContent.init();
+        io.github.profetgit.hotairballoons.net.BalloonInput.register();
         LOG.info("Hot Air Balloons loaded");
     }
 }

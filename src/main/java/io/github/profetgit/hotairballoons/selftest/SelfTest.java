@@ -44,6 +44,11 @@ public final class SelfTest {
             HotAirBalloons.LOG.info("[selftest] step {}/{} screen={}", index, steps == null ? 0 : steps.size(),
                 mc.gui.screen() == null ? null : mc.gui.screen().getClass().getSimpleName());
         }
+        if (steps == null && MODE.startsWith("mp-")) {
+            if (!mc.isGameLoadFinished()) return;
+            ModTestHook.audit();
+            steps = Scenarios.multiplayer(MODE.substring(3)).steps;
+        }
         if (steps == null) {
             if (!mc.isGameLoadFinished() || !(mc.gui.screen() instanceof TitleScreen) || ++titleTicks < 20) return;
             ModTestHook.audit();

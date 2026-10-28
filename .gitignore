@@ -10,3 +10,4 @@ dist/
 __pycache__/
 dev/icon/out/
 release-art/
+dev/server/.work/
