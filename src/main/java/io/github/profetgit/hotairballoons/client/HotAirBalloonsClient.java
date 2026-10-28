@@ -39,6 +39,8 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         };
         HotAirBalloon.localInput = HotAirBalloonsClient::keys;
         ClientTickEvents.END_CLIENT_TICK.register(HotAirBalloonsClient::sendKeys);
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.attachElementAfter(
+            net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.HOTBAR, io.github.profetgit.hotairballoons.HotAirBalloons.id("gauges"), BalloonHud::draw);
         net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES).registerReloadListener(
             io.github.profetgit.hotairballoons.HotAirBalloons.id("emblems"),
             (net.minecraft.server.packs.resources.ResourceManagerReloadListener) rm -> EmblemTextures.clear());

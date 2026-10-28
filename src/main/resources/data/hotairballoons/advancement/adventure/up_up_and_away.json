@@ -1,0 +1,24 @@
+{
+  "parent": "minecraft:adventure/root",
+  "criteria": {
+    "high_in_a_balloon": {
+      "conditions": {
+        "player": {
+          "type": "minecraft:entity_properties",
+          "entity": "this",
+          "predicate": {
+            "minecraft:vehicle": { "minecraft:entity_type": "hotairballoons:hot_air_balloon" },
+            "minecraft:location": { "position": { "y": { "min": 200.0 } } }
+          }
+        }
+      },
+      "trigger": "minecraft:location"
+    }
+  },
+  "display": {
+    "icon": { "id": "hotairballoons:hot_air_balloon" },
+    "title": { "translate": "advancements.hotairballoons.up_up_and_away.title" },
+    "description": { "translate": "advancements.hotairballoons.up_up_and_away.description" }
+  },
+  "requirements": [ [ "high_in_a_balloon" ] ]
+}

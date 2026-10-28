@@ -41,6 +41,7 @@ final class Scenarios {
     private static final Input BURN_FORWARD = new Input(true, false, false, false, true, false, false);
     private static final Input VENT = new Input(false, false, false, false, false, false, true);
     private static double groundY, startX, startZ, highY;
+    private static float health;
     private static UUID balloonId;
 
     private Scenarios() {}
@@ -64,6 +65,7 @@ final class Scenarios {
         if (only.equals("all") || only.contains("showcase")) showcase(s);
         if (only.equals("all") || only.contains("cargo")) cargo(s);
         if (only.equals("all") || only.contains("looks")) looks(s);
+        if (only.equals("all") || only.contains("fuel")) fuel(s);
         return s;
     }
 
@@ -124,6 +126,7 @@ final class Scenarios {
                 b.setYRot(90);
                 b.startInflating();
                 p.level().addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
                 balloonId = b.getUUID();
             })
             .capture("inflate", 150)
@@ -214,6 +217,7 @@ final class Scenarios {
                 HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
                 b.setInitialPos(ground[0], ground[1], ground[2]);
                 sl.addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
                 balloonId = b.getUUID();
                 mobs[0] = spawnMob(sl, net.minecraft.world.entity.EntityTypes.SHEEP, ground[0] + 0.3, ground[1], ground[2]);
             })
@@ -403,6 +407,7 @@ final class Scenarios {
                 b.setInitialPos(at[0], at[1], at[2]);
                 b.setYRot(0);
                 sl.addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
                 balloonId = b.getUUID();
             })
             .waitTicks(5)
@@ -498,6 +503,88 @@ final class Scenarios {
             .run(mc -> mc.gui.hud.toggle());
     }
 
+    /**
+     * M6: a balloon with a little fuel and a pilot without any runs dry, the flame dies, it sinks and lands softly;
+     * clicking with coal refuels; the recipe exists; flying above 200 gives the advancement; with fuel turned off in the
+     * config the burner works on an empty tank.
+     */
+    private static void fuel(Script s) {
+        double[] at = new double[2];
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                p.setNoGravity(false);
+                p.getInventory().clearContent();
+                p.setHealth(p.getMaxHealth());
+                ServerLevel sl = (ServerLevel) p.level();
+                double x = Math.floor(p.getX()) + 40.5, z = Math.floor(p.getZ()) + 40.5;
+                double y = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z));
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(x, y, z);
+                sl.addFreshEntity(b);
+                b.setFuel(400);
+                balloonId = b.getUUID();
+                p.teleportTo(x, y, z);
+                p.startRiding(b);
+                at[0] = y;
+            })
+            .until("aboard the fuel balloon", 100, mc -> balloon(mc) != null)
+            .until("client has the fuel", 100, mc -> balloon(mc) != null && balloon(mc).fuel() == 400)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .until("aloft", 300, mc -> balloon(mc) != null && balloon(mc).getY() > at[0] + 2)
+            .run(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON))
+            .capture("still_hud", 1)
+            .until("fuel runs out", 600, mc -> balloon(mc) != null && !balloon(mc).hasFuel())
+            .waitTicks(5)
+            .check("no fuel, no flame", mc -> !balloon(mc).burning() ? null : "still burning")
+            .run(mc -> at[1] = balloon(mc).getY())
+            .until("sinks to the ground", 2400, mc -> balloon(mc) != null && balloon(mc).onGround())
+            .check("empty tank sinks it", mc -> at[1] - balloon(mc).getY() > 2 ? null : String.format("from %.2f to %.2f", at[1], balloon(mc).getY()))
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .waitTicks(5)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                SelfTest.record("soft landing", p.getHealth() >= p.getMaxHealth(), String.format("health %.1f after %.1f blocks", p.getHealth(), at[1] - b.getY()));
+                p.stopRiding();
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL, 2));
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("clicking with coal refuels", b.fuel() == 1600 && p.getMainHandItem().getCount() == 1, "fuel " + b.fuel() + ", hand " + p.getMainHandItem());
+                var recipe = server.getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE,
+                    io.github.profetgit.hotairballoons.HotAirBalloons.id("hot_air_balloon")));
+                SelfTest.record("balloon recipe loads", recipe.isPresent(), "");
+                b.setFuel(HotAirBalloon.MAX_FUEL);
+                b.teleportTo(b.getX(), 205, b.getZ());
+                p.teleportTo(b.getX() + 2, 206, b.getZ());
+                p.setNoGravity(true);
+            })
+            .waitTicks(20)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.setNoGravity(false);
+                p.startRiding(serverBalloon(server));
+            })
+            .until("aboard high up", 100, mc -> balloon(mc) != null && balloon(mc).getY() > 200)
+            .waitTicks(45)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                var adv = server.getAdvancements().get(io.github.profetgit.hotairballoons.HotAirBalloons.id("adventure/up_up_and_away"));
+                SelfTest.record("advancement above 200", adv != null && p.getAdvancements().getOrStartProgress(adv).isDone(),
+                    adv == null ? "advancement not loaded" : String.format("y %.1f", p.getY()));
+                io.github.profetgit.hotairballoons.Config.get().needsFuel = false;
+                serverBalloon(server).setFuel(0);
+            })
+            .waitTicks(5)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(20)
+            .check("fuel off in config: burns on an empty tank", mc -> balloon(mc).fuel() == HotAirBalloon.UNLIMITED && balloon(mc).burning() ? null
+                : "fuel " + balloon(mc).fuel() + ", burning " + balloon(mc).burning())
+            .run(mc -> {
+                HotAirBalloonsClient.testInput = null;
+                io.github.profetgit.hotairballoons.Config.get().needsFuel = true;
+            });
+    }
+
     private static HotAirBalloon serverBalloon(MinecraftServer server) {
         return (HotAirBalloon) server.overworld().getEntity(balloonId);
     }
@@ -512,6 +599,7 @@ final class Scenarios {
                 HotAirBalloon b = ModContent.BALLOON.create(p.level(), EntitySpawnReason.COMMAND);
                 b.setInitialPos(p.getX() + 6, p.getY(), p.getZ());
                 p.level().addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
                 balloonId = b.getUUID();
                 p.startRiding(b);
             })
@@ -656,6 +744,7 @@ final class Scenarios {
                 ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
                 p.getInventory().clearContent();
                 p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModContent.BALLOON_ITEM));
+                p.getInventory().setItem(5, new ItemStack(Items.COAL, 4));
                 p.snapTo(p.getX(), p.getY(), p.getZ(), 0, 60);
                 ModContent.BALLOON_ITEM.use(p.level(), p, InteractionHand.MAIN_HAND);
             })
@@ -682,6 +771,13 @@ final class Scenarios {
                 return dy > 3 ? null : "rose only " + String.format("%.2f", dy);
             })
             .check("flame shows", mc -> balloon(mc).burning() ? null : "not burning")
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                int coal = p.getInventory().countItem(Items.COAL);
+                HotAirBalloon b = (HotAirBalloon) p.getVehicle();
+                SelfTest.record("pilot's coal feeds the burner", coal == 3 && b.fuel() > 0, "coal left " + coal + ", fuel " + b.fuel());
+                health = p.getHealth();
+            })
             .run(mc -> {
                 startX = balloon(mc).getX();
                 startZ = balloon(mc).getZ();
@@ -707,6 +803,11 @@ final class Scenarios {
             .run(mc -> HotAirBalloonsClient.testInput = VENT)
             .until("landing", 1200, mc -> balloon(mc) != null && balloon(mc).onGround())
             .check("vent lands it", mc -> balloon(mc).getY() < highY - 3 ? null : "y " + balloon(mc).getY())
+            .waitTicks(5)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                SelfTest.record("landing hurts nobody aboard", p.getHealth() >= health, String.format("health %.1f -> %.1f after %.1f blocks down", health, p.getHealth(), highY - groundY));
+            })
             .run(mc -> HotAirBalloonsClient.testInput = null)
             .server(server -> {
                 ServerPlayer p = server.getPlayerList().getPlayers().getFirst();

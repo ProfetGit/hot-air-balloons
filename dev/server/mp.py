@@ -120,7 +120,7 @@ def run(mc: str, port: int) -> tuple[bool, list[str]]:
                 notes.append("FAIL the pilot never joined")
                 ok = False
             else:
-                srv.send("gamerule spawn_mobs false", "gamerule spawn_monsters false", "op Pilot", "gamemode survival Pilot",
+                srv.send("gamerule spawn_mobs false", "gamerule spawn_monsters false", "op Pilot", "gamemode survival Pilot", "give Pilot coal 16",
                          "tp Pilot 0.5 -60 0.5 0 0")
                 watch = threading.Thread(target=run_client, args=(*WATCH, "watch", 420))
                 watch.start()

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "W": "#minecraft:wool",
+    "S": "minecraft:string",
+    "C": "minecraft:campfire",
+    "P": "#minecraft:wooden_slabs"
+  },
+  "pattern": [ "WWW", "SCS", "PPP" ],
+  "result": { "id": "hotairballoons:hot_air_balloon" }
+}

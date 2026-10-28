@@ -1,5 +1,6 @@
 package io.github.profetgit.hotairballoons.entity;
 
+import io.github.profetgit.hotairballoons.Config;
 import io.github.profetgit.hotairballoons.ModContent;
 import java.util.List;
 import java.util.function.Consumer;
@@ -64,6 +65,15 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private static final EntityDataAccessor<Integer> DATA_INFLATE = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_CHEST = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<EnvelopeLook> DATA_LOOK = SynchedEntityData.defineId(HotAirBalloon.class, ModContent.LOOK_SERIALIZER);
+    /** Burner fuel in furnace ticks; {@link #UNLIMITED} when the server's config says fuel isn't needed. */
+    private static final EntityDataAccessor<Integer> DATA_FUEL = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
+    public static final int UNLIMITED = -1;
+    /** Two coal blocks' worth. */
+    public static final int MAX_FUEL = 32000;
+    /** Below this the pilot's (or the chest's) next fuel item goes in by itself. */
+    public static final int REFUEL_AT = 200;
+    /** Fuel per tick aloft: the pilot light, and the burner on top. */
+    public static final float IDLE_USE = 1.0F, BURN_USE = 3.0F;
     public static final int CHEST_SIZE = 27;
     /** Mobs wider than this don't fit in the basket. */
     public static final float MAX_MOB_WIDTH = 1.4F;
@@ -89,6 +99,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private boolean pilotBurner, pilotVent;
     private Leashable.@Nullable LeashData leashData;
     private int inflateLeft;
+    private float fuelUsed;
     private NonNullList<ItemStack> itemStacks = NonNullList.withSize(CHEST_SIZE, ItemStack.EMPTY);
     private @Nullable ResourceKey<LootTable> lootTable;
     private long lootTableSeed;
@@ -121,6 +132,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         entityData.define(DATA_INFLATE, 0);
         entityData.define(DATA_CHEST, false);
         entityData.define(DATA_LOOK, EnvelopeLook.DEFAULT);
+        entityData.define(DATA_FUEL, 0);
     }
 
     @Override
@@ -239,15 +251,18 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         boolean burner = in != null && in.jump();
         boolean vent = in != null && in.sprint();
         if (!level().isClientSide() || isLocalInstanceAuthoritative()) {
-            heat = BalloonPhysics.heat(heat, burner, vent, piloted || isLeashed());
-            burning = burner && piloted;
+            boolean lit = piloted && hasFuel();
+            heat = BalloonPhysics.heat(heat, burner && lit, vent, lit || isLeashed());
+            burning = burner && lit;
         }
         if (level() instanceof ServerLevel sl) {
             entityData.set(DATA_HEAT, heat);
             entityData.set(DATA_BURNER, burning);
+            useFuel(sl, piloted);
             double[] w = Wind.at(sl.getSeed(), getY(), sl.getGameTime());
-            entityData.set(DATA_WIND_X, (float) w[0]);
-            entityData.set(DATA_WIND_Z, (float) w[1]);
+            double k = Config.get().wind / 100.0;
+            entityData.set(DATA_WIND_X, (float) (w[0] * k));
+            entityData.set(DATA_WIND_Z, (float) (w[1] * k));
             if (inflateLeft > 0) entityData.set(DATA_INFLATE, --inflateLeft);
         }
 
@@ -259,7 +274,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             yawSpeed = 0;
         }
         applyEffectsFromBlocks();
-        if (!level().isClientSide() && resting()) boardMobs();
+        if (!level().isClientSide() && Config.get().mobsBoard && resting()) boardMobs();
         if (level().isClientSide()) {
             animTick();
             if (clientTick != null) clientTick.accept(this);
@@ -419,6 +434,10 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         ItemStack held = player.getItemInHand(hand);
         InteractionResult looks = restyle(player, held);
         if (looks != InteractionResult.PASS) return looks;
+        if (!player.isSecondaryUseActive() && level() instanceof ServerLevel sl && addFuel(sl, held, player)) {
+            playSound(SoundEvents.FIRECHARGE_USE, 0.4F, 1.6F);
+            return InteractionResult.SUCCESS_SERVER;
+        }
         if (!hasChest() && held.is(Items.CHEST) && !player.isSecondaryUseActive()) {
             if (!level().isClientSide()) {
                 setChest(true);
@@ -486,6 +505,88 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return stack;
     }
 
+    /** Fuel left in furnace ticks, or {@link #UNLIMITED}. Synced, so the pilot's client knows when the burner dies. */
+    public int fuel() {
+        return entityData.get(DATA_FUEL);
+    }
+
+    /** Tests and commands: set the burner's fuel directly. */
+    public void setFuel(int fuel) {
+        entityData.set(DATA_FUEL, Math.clamp(fuel, 0, MAX_FUEL));
+    }
+
+    public boolean hasFuel() {
+        int f = fuel();
+        return f == UNLIMITED || f > 0;
+    }
+
+    /** Server: burn fuel while a pilot is aloft; top up from the pilot or the chest when low. */
+    private void useFuel(ServerLevel sl, boolean piloted) {
+        Config c = Config.get();
+        if (!c.needsFuel) {
+            entityData.set(DATA_FUEL, UNLIMITED);
+            return;
+        }
+        int fuel = fuel();
+        if (fuel == UNLIMITED) fuel = 0;
+        if (piloted && !resting()) {
+            fuelUsed += (burning ? BURN_USE : IDLE_USE) * c.fuelUse / 100.0F;
+            int whole = (int) fuelUsed;
+            fuelUsed -= whole;
+            fuel = Math.max(0, fuel - whole);
+        }
+        if (piloted && fuel < REFUEL_AT && getControllingPassenger() instanceof Player pilot) {
+            entityData.set(DATA_FUEL, fuel);
+            if (!refuelFrom(sl, pilot.getInventory().getNonEquipmentItems(), pilot) && hasChest()) refuelFrom(sl, getItemStacks(), pilot);
+            return;
+        }
+        entityData.set(DATA_FUEL, fuel);
+    }
+
+    private boolean refuelFrom(ServerLevel sl, java.util.List<ItemStack> stacks, Player pilot) {
+        for (ItemStack stack : stacks) {
+            if (!stack.isEmpty() && burnTime(sl, stack) > 0 && !stack.has(ModContent.ENVELOPE)) {
+                return addFuel(sl, stack, null);
+            }
+        }
+        return false;
+    }
+
+    /** One fuel item into the burner if it fits; the item is used up (not for players with infinite materials). */
+    private boolean addFuel(ServerLevel sl, ItemStack stack, @Nullable Player player) {
+        if (!Config.get().needsFuel || stack.isEmpty()) return false;
+        int burn = burnTime(sl, stack);
+        int fuel = Math.max(0, fuel());
+        if (burn <= 0 || fuel + burn > MAX_FUEL) return false;
+        entityData.set(DATA_FUEL, fuel + burn);
+        var remainder = stack.getItem().getCraftingRemainder();
+        ItemStack left = remainder == null ? ItemStack.EMPTY : remainder.create();
+        if (player != null) stack.consume(1, player);
+        else stack.shrink(1);
+        if (!left.isEmpty() && getControllingPassenger() instanceof Player pilot) pilot.getInventory().placeItemBackInInventory(left, net.minecraft.util.Prediction.SERVER_ONLY);
+        return true;
+    }
+
+    private int burnTime(ServerLevel sl, ItemStack stack) {
+        var params = new net.minecraft.world.level.storage.loot.LootParams.Builder(sl)
+            .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN, position())
+            .create(net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.COMMAND);
+        var ctx = new net.minecraft.world.level.storage.loot.LootContext.Builder(params).create(java.util.Optional.empty());
+        return net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt.getFromItem(stack,
+            net.minecraft.core.component.DataComponents.COOKING_FUEL, net.minecraft.world.item.component.CookingFuel::burnTime, ctx, 0);
+    }
+
+    /** A balloon never falls freely (it sinks at most {@link BalloonPhysics#MAX_SINK}), so landing hurts nobody aboard. */
+    @Override
+    protected void checkFallDamage(double ya, boolean onGround, net.minecraft.world.level.block.state.BlockState state, net.minecraft.core.BlockPos pos) {
+        resetFallDistance();
+    }
+
+    @Override
+    public boolean causeFallDamage(double fallDistance, float damageModifier, DamageSource source) {
+        return false;
+    }
+
     public boolean hasChest() {
         return entityData.get(DATA_CHEST);
     }
@@ -496,6 +597,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     public void destroy(ServerLevel level, DamageSource source) {
+        if (!resting()) {
+            for (Entity e : getPassengers()) {
+                if (e instanceof LivingEntity rider) rider.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOW_FALLING, 400));
+            }
+        }
         kill(level);
         if (level.getGameRules().get(GameRules.ENTITY_DROPS)) {
             ItemStack stack = asItem();
@@ -615,6 +721,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         writeLeashData(output, leashData);
         output.putFloat("heat", heat);
         output.putBoolean("chest", hasChest());
+        output.putInt("fuel", Math.max(0, fuel()));
         if (!look().equals(EnvelopeLook.DEFAULT)) output.store("look", EnvelopeLook.CODEC, look());
         if (hasChest()) addChestVehicleSaveData(output);
     }
@@ -624,6 +731,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         readLeashData(input);
         heat = input.getFloatOr("heat", BalloonPhysics.NEUTRAL);
         setChest(input.getBooleanOr("chest", false));
+        entityData.set(DATA_FUEL, input.getIntOr("fuel", 0));
         setLook(input.read("look", EnvelopeLook.CODEC).orElse(EnvelopeLook.DEFAULT));
         readChestVehicleSaveData(input);
     }
