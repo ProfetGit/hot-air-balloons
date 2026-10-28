@@ -3,10 +3,12 @@
   "user": "Aeronaut",
   "out_prop": "hotairballoons.selftest",
   "props": {
-    "hotairballoons.selftest.mode": "{mode}"
+    "hotairballoons.selftest.mode": "{mode}",
+    "hotairballoons.selftest.scene": "{scene}"
   },
   "defaults": {
-    "mode": "full"
+    "mode": "full",
+    "scene": "all"
   },
   "fabric_api": true,
   "width": 1280,
@@ -21,19 +23,32 @@
     "quick": {
       "unit": [],
       "jobs": [
-        { "mc": "26.3", "loader": "fabric" }
+        {
+          "mc": "26.3",
+          "loader": "fabric"
+        }
       ]
     },
     "full": {
-      "unit": [":26.3-fabric:test"],
+      "unit": [
+        ":26.3-fabric:test"
+      ],
       "jobs": [
-        { "mc": "26.3", "loader": "fabric" }
+        {
+          "mc": "26.3",
+          "loader": "fabric"
+        }
       ]
     },
     "release": {
-      "unit": [":26.3-fabric:test"],
+      "unit": [
+        ":26.3-fabric:test"
+      ],
       "jobs": [
-        { "mc": "26.3", "loader": "fabric" }
+        {
+          "mc": "26.3",
+          "loader": "fabric"
+        }
       ]
     }
   },

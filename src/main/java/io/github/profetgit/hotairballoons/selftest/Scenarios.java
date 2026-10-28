@@ -57,9 +57,11 @@ final class Scenarios {
             .until("world to load", 2400, mc -> mc.player != null && mc.level != null && mc.gui.screen() == null)
             .waitTicks(40)
             .check("world loaded", mc -> mc.player.isAlive() ? null : "player not alive");
-        ride(s);
-        weather(s);
-        showcase(s);
+        String only = System.getProperty("hotairballoons.selftest.scene", "all");
+        if (only.equals("all") || only.contains("ride")) ride(s);
+        if (only.equals("all") || only.contains("weather")) weather(s);
+        if (only.equals("all") || only.contains("showcase")) showcase(s);
+        if (only.equals("all") || only.contains("cargo")) cargo(s);
         return s;
     }
 
@@ -180,6 +182,185 @@ final class Scenarios {
             .run(mc -> {
                 HotAirBalloonsClient.testInput = null;
                 mc.gui.hud.toggle();
+            });
+    }
+
+    private static Entity spawnMob(ServerLevel sl, net.minecraft.world.entity.EntityType<?> type, double x, double y, double z) {
+        Entity e = type.create(sl, EntitySpawnReason.COMMAND);
+        e.snapTo(x, y, z, 0, 0);
+        if (e instanceof net.minecraft.world.entity.Mob m) m.setNoAi(true);
+        sl.addFreshEntity(e);
+        return e;
+    }
+
+    /**
+     * M4: a sheep walks in first but the player still flies it; a chest from inside the basket goes on the back wall; the
+     * inventory key opens the chest only once there is one; seats fill to 4; contents survive a save/load; mobs ride a
+     * climb; a cow tied to the balloon is lifted; breaking it drops balloon, chest and contents.
+     */
+    private static void cargo(Script s) {
+        double[] ground = new double[3];
+        Entity[] mobs = new Entity[4];
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                ServerLevel sl = (ServerLevel) p.level();
+                ground[0] = Math.floor(p.getX()) - 60.5;
+                ground[2] = Math.floor(p.getZ()) + 0.5;
+                ground[1] = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(ground[0]), (int) Math.floor(ground[2]));
+                p.teleportTo(ground[0] - 3, ground[1], ground[2]);
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(ground[0], ground[1], ground[2]);
+                sl.addFreshEntity(b);
+                balloonId = b.getUUID();
+                mobs[0] = spawnMob(sl, net.minecraft.world.entity.EntityTypes.SHEEP, ground[0] + 0.3, ground[1], ground[2]);
+            })
+            .waitTicks(10)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                SelfTest.record("sheep walks in", mobs[0].getVehicle() == b, "vehicle " + mobs[0].getVehicle());
+                p.startRiding(b);
+                SelfTest.record("player flies though the sheep came first", b.getControllingPassenger() == p && mobs[0].getVehicle() == b,
+                    "controller " + b.getControllingPassenger() + ", sheep aboard " + (mobs[0].getVehicle() == b));
+            })
+            .until("aboard the cargo balloon", 100, mc -> balloon(mc) != null)
+            .check("inventory key opens own inventory without a chest", mc -> !mc.gameMode.isServerControlledInventory() ? null : "server-controlled")
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHEST));
+                InteractionResult r = b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("chest goes in from the basket", b.hasChest() && p.getMainHandItem().isEmpty(), r + ", hand " + p.getMainHandItem());
+                ServerLevel sl = (ServerLevel) b.level();
+                mobs[1] = spawnMob(sl, net.minecraft.world.entity.EntityTypes.PIG, ground[0] - 0.3, ground[1], ground[2] + 0.3);
+            })
+            .waitTicks(10)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                mobs[2] = spawnMob(sl, net.minecraft.world.entity.EntityTypes.CHICKEN, ground[0], ground[1], ground[2] - 0.3);
+            })
+            .waitTicks(10)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                mobs[3] = spawnMob((ServerLevel) b.level(), net.minecraft.world.entity.EntityTypes.RABBIT, ground[0] + 0.2, ground[1], ground[2] - 0.2);
+            })
+            .waitTicks(10)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                SelfTest.record("four seats, chest outside", b.getPassengers().size() == 4 && mobs[1].getVehicle() == b && mobs[2].getVehicle() == b
+                    && mobs[3].getVehicle() == null, "passengers " + b.getPassengers().size() + ", pig " + (mobs[1].getVehicle() == b)
+                    + ", chicken " + (mobs[2].getVehicle() == b) + ", rabbit " + (mobs[3].getVehicle() == b));
+                mobs[2].discard();
+                mobs[3].discard();
+                b.setItem(0, new ItemStack(Items.DIAMOND, 5));
+                b.setItem(26, new ItemStack(Items.BREAD, 12));
+                var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, b.registryAccess());
+                b.saveWithoutId(out);
+                HotAirBalloon copy = ModContent.BALLOON.create(b.level(), EntitySpawnReason.LOAD);
+                copy.load(net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, b.registryAccess(), out.buildResult()));
+                SelfTest.record("chest survives save and load", copy.hasChest() && copy.getItem(0).is(Items.DIAMOND) && copy.getItem(0).getCount() == 5
+                    && copy.getItem(26).is(Items.BREAD), "chest " + copy.hasChest() + ", slot0 " + copy.getItem(0) + ", slot26 " + copy.getItem(26));
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                SelfTest.record("chest menu opens", b.createMenu(1, p.getInventory(), p) != null, "");
+            })
+            .waitTicks(5)
+            .check("inventory key opens the chest once it is there", mc -> balloon(mc).hasChest() && mc.gameMode.isServerControlledInventory() ? null
+                : "client chest " + balloon(mc).hasChest())
+            .run(mc -> {
+                mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                mc.player.setXRot(35);
+                if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+            })
+            .waitTicks(10)
+            .capture("still_cargo", 1)
+            .waitTicks(5)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(100)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                SelfTest.record("mobs ride the climb", b.getY() > ground[1] + 3 && mobs[0].getVehicle() == b && mobs[1].getVehicle() == b,
+                    String.format("y +%.2f, sheep %s, pig %s", b.getY() - ground[1], mobs[0].getVehicle() == b, mobs[1].getVehicle() == b));
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = VENT)
+            .until("landing", 1600, mc -> balloon(mc) != null && balloon(mc).onGround())
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                p.stopRiding();
+                p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                mobs[3] = spawnMob(sl, net.minecraft.world.entity.EntityTypes.COW, b.getX() + 4, b.getY(), b.getZ());
+                ((net.minecraft.world.entity.Mob) mobs[3]).setNoAi(false);
+                ((net.minecraft.world.entity.Leashable) mobs[3]).setLeashedTo(p, true);
+                p.setShiftKeyDown(true);
+                InteractionResult r = b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                p.setShiftKeyDown(false);
+                SelfTest.record("leashed cow ties to the balloon", ((net.minecraft.world.entity.Leashable) mobs[3]).getLeashHolder() == b,
+                    r + ", holder " + ((net.minecraft.world.entity.Leashable) mobs[3]).getLeashHolder());
+                ground[1] = mobs[3].getY();
+                p.startRiding(b);
+            })
+            .until("aboard to lift the cow", 100, mc -> balloon(mc) != null)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(200)
+            .server(server -> {
+                var cow = (net.minecraft.world.entity.Leashable) mobs[3];
+                SelfTest.record("balloon lifts the tied cow", cow.getLeashHolder() == serverBalloon(server) && mobs[3].getY() > ground[1] + 2,
+                    String.format("leashed %s, cow +%.2f, balloon +%.2f", cow.isLeashed(), mobs[3].getY() - ground[1], serverBalloon(server).getY() - ground[1]));
+            })
+            .capture("still_cow", 1)
+            .waitTicks(5)
+            .run(mc -> HotAirBalloonsClient.testInput = VENT)
+            .until("landing", 1600, mc -> balloon(mc) != null && balloon(mc).onGround())
+            .run(mc -> {
+                HotAirBalloonsClient.testInput = null;
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+            })
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.stopRiding();
+                for (Entity m : List.copyOf(b.getPassengers())) m.discard();
+                mobs[3].discard();
+                p.setNoGravity(true);
+                p.setDeltaMovement(Vec3.ZERO);
+                double a = Math.toRadians(b.getYRot());
+                look(p, b.getX() + 3.2 * Math.sin(a) + 1.4 * Math.cos(a), b.getY() + 0.9, b.getZ() - 3.2 * Math.cos(a) + 1.4 * Math.sin(a),
+                    b.getX(), b.getY() + 0.5, b.getZ());
+            })
+            .waitTicks(20)
+            .check("chest model resolves", mc -> {
+                HotAirBalloon b = mc.level.getEntitiesOfClass(HotAirBalloon.class, mc.player.getBoundingBox().inflate(6)).getFirst();
+                var r = (io.github.profetgit.hotairballoons.client.BalloonRenderer) mc.getEntityRenderDispatcher().getRenderer(b);
+                var st = r.createRenderState();
+                r.extractRenderState(b, st, 0);
+                return !st.chest.isEmpty() ? null : "empty chest model, client hasChest " + b.hasChest();
+            })
+            .capture("still_chest", 1)
+            .waitTicks(5)
+            .run(mc -> mc.gui.hud.toggle())
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                p.setNoGravity(false);
+                p.teleportTo(b.getX() + 20, b.getY() + 1, b.getZ());
+                ground[0] = b.getX();
+                ground[2] = b.getZ();
+                b.hurtServer(sl, sl.damageSources().generic(), 100);
+            })
+            .waitTicks(5)
+            .server(server -> {
+                ServerLevel sl = server.overworld();
+                List<ItemEntity> drops = sl.getEntitiesOfClass(ItemEntity.class, new AABB(ground[0] - 6, -64, ground[2] - 6, ground[0] + 6, 320, ground[2] + 6));
+                boolean balloon = drops.stream().anyMatch(e -> e.getItem().is(ModContent.BALLOON_ITEM));
+                boolean chest = drops.stream().anyMatch(e -> e.getItem().is(Items.CHEST));
+                boolean diamonds = drops.stream().anyMatch(e -> e.getItem().is(Items.DIAMOND));
+                SelfTest.record("break drops balloon, chest and contents", balloon && chest && diamonds,
+                    "balloon " + balloon + ", chest " + chest + ", diamonds " + diamonds);
             });
     }
 

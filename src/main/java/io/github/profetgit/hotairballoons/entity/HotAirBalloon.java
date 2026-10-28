@@ -4,25 +4,43 @@ import io.github.profetgit.hotairballoons.ModContent;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import net.minecraft.core.NonNullList;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.HasCustomInventoryScreen;
+import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.entity.InterpolationHandler;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.ContainerEntity;
 import net.minecraft.world.entity.vehicle.VehicleEntity;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.entity.ContainerUser;
+import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -33,15 +51,21 @@ import org.jspecify.annotations.Nullable;
 /**
  * The balloon: a vehicle moved by whoever is authoritative, like a boat (the controlling player's client, else the
  * server). Heat is simulated on both sides from the pilot's keys; the server's copy is synced for everyone else's
- * flame and sound. Wind is computed on the server and synced, since clients don't know the seed.
+ * flame and sound. Wind is computed on the server and synced, since clients don't know the seed. Four riders stand in
+ * the basket corners (players or mobs that walk in on the ground); a chest can be strapped to the back wall, opened
+ * like a chest boat's (inventory key while riding, sneak-use from outside).
  */
-public class HotAirBalloon extends VehicleEntity implements Leashable {
+public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustomInventoryScreen, ContainerEntity {
     private static final EntityDataAccessor<Float> DATA_HEAT = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Boolean> DATA_BURNER = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DATA_WIND_X = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_WIND_Z = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
     /** Server ticks left of the inflate animation after placing; never saved, so loaded balloons start inflated. */
     private static final EntityDataAccessor<Integer> DATA_INFLATE = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_CHEST = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
+    public static final int CHEST_SIZE = 27;
+    /** Mobs wider than this don't fit in the basket. */
+    public static final float MAX_MOB_WIDTH = 1.4F;
     public static final int INFLATE_TICKS = 40;
     public static final int MAX_PASSENGERS = 4;
     public static final double CEILING = 320.0;
@@ -64,6 +88,9 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
     private boolean pilotBurner, pilotVent;
     private Leashable.@Nullable LeashData leashData;
     private int inflateLeft;
+    private NonNullList<ItemStack> itemStacks = NonNullList.withSize(CHEST_SIZE, ItemStack.EMPTY);
+    private @Nullable ResourceKey<LootTable> lootTable;
+    private long lootTableSeed;
 
     /** Client animation state, advanced once per tick in {@link #animTick}: envelope sway spring, flame, inflation. */
     public float swayX, swayZ, swayXo, swayZo, flame, flameO;
@@ -91,6 +118,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         entityData.define(DATA_WIND_X, 0.0F);
         entityData.define(DATA_WIND_Z, 0.0F);
         entityData.define(DATA_INFLATE, 0);
+        entityData.define(DATA_CHEST, false);
     }
 
     @Override
@@ -214,6 +242,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
             yawSpeed = 0;
         }
         applyEffectsFromBlocks();
+        if (!level().isClientSide() && resting()) boardMobs();
         if (level().isClientSide()) {
             animTick();
             if (clientTick != null) clientTick.accept(this);
@@ -303,14 +332,36 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         return false;
     }
 
+    /** Server, on the ground: mobs that walk into the basket climb in, like boats take them (players board by click). */
+    private void boardMobs() {
+        if (getPassengers().size() >= MAX_PASSENGERS) return;
+        for (Entity e : level().getEntities(this, getBoundingBox().inflate(0.2, -0.01, 0.2), EntitySelector.pushableBy(this))) {
+            if (getPassengers().size() >= MAX_PASSENGERS) return;
+            if (e instanceof LivingEntity && !(e instanceof Player) && !e.isPassenger() && !e.hasPassenger(this)
+                && !e.is(EntityTypeTags.CANNOT_BE_PUSHED_ONTO_BOATS) && e.getBbWidth() < MAX_MOB_WIDTH && !(e instanceof Leashable l && l.isLeashed())) {
+                e.startRiding(this);
+            }
+        }
+    }
+
+    /**
+     * Server: standing on something. Not {@code onGround()}: while a player pilots, the server doesn't move the balloon
+     * and its ground flag is whatever the last vehicle packet said.
+     */
+    private boolean resting() {
+        return !level().noCollision(this, getBoundingBox().move(0, -0.1, 0));
+    }
+
     @Override
     protected boolean canAddPassenger(Entity passenger) {
         return getPassengers().size() < MAX_PASSENGERS;
     }
 
+    /** The pilot: the first player aboard, so a sheep that walked in first doesn't take the controls. */
     @Override
     public @Nullable LivingEntity getControllingPassenger() {
-        return getFirstPassenger() instanceof Player p ? p : super.getControllingPassenger();
+        for (Entity e : getPassengers()) if (e instanceof Player p) return p;
+        return null;
     }
 
     @Override
@@ -340,25 +391,167 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         return onGround() ? spot : super.getDismountLocationForPassenger(passenger);
     }
 
+    /**
+     * Vanilla first (leads, shears, sneak-use while leading mobs ties them to the balloon). Then: a chest in hand adds the
+     * chest; sneak-use or a full basket opens it; anything else boards.
+     */
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
         InteractionResult r = super.interact(player, hand, location);
         if (r != InteractionResult.PASS) return r;
+        ItemStack held = player.getItemInHand(hand);
+        if (!hasChest() && held.is(Items.CHEST) && !player.isSecondaryUseActive()) {
+            if (!level().isClientSide()) {
+                setChest(true);
+                held.consume(1, player);
+                playSound(SoundEvents.CHEST_LOCKED, 0.6F, 1.2F);
+                gameEvent(GameEvent.ENTITY_INTERACT, player);
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (hasChest() && (player.isSecondaryUseActive() || player.getVehicle() != this && !canAddPassenger(player))) {
+            InteractionResult open = interactWithContainerVehicle(player);
+            if (open.consumesAction()) gameEvent(GameEvent.CONTAINER_OPEN, player);
+            return open;
+        }
         if (player.isSecondaryUseActive()) return InteractionResult.PASS;
         if (!level().isClientSide()) return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
         return InteractionResult.SUCCESS;
+    }
+
+    public boolean hasChest() {
+        return entityData.get(DATA_CHEST);
+    }
+
+    public void setChest(boolean chest) {
+        entityData.set(DATA_CHEST, chest);
+    }
+
+    @Override
+    public void destroy(ServerLevel level, DamageSource source) {
+        destroy(level, getDropItem());
+        if (hasChest()) {
+            if (level.getGameRules().get(GameRules.ENTITY_DROPS)) spawnAtLocation(level, new ItemStack(Items.CHEST));
+            chestVehicleDestroyed(source, level, this);
+        }
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        if (!level().isClientSide() && reason.shouldDestroy()) {
+            Containers.dropContents(level(), this, this);
+            if (isLeashed()) dropLeash();
+        }
+        super.remove(reason);
+    }
+
+    @Override
+    public void openCustomInventoryScreen(Player player) {
+        if (!hasChest()) return;
+        player.openMenu(this);
+        gameEvent(GameEvent.CONTAINER_OPEN, player);
+    }
+
+    @Override
+    public @Nullable AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+        if (!hasChest() || lootTable != null && player.isSpectator()) return null;
+        unpackChestVehicleLootTable(inventory.player);
+        return ChestMenu.threeRows(containerId, inventory, this);
+    }
+
+    @Override
+    public void clearContent() {
+        clearChestVehicleContent();
+    }
+
+    @Override
+    public int getContainerSize() {
+        return CHEST_SIZE;
+    }
+
+    @Override
+    public ItemStack getItem(int slot) {
+        return getChestVehicleItem(slot);
+    }
+
+    @Override
+    public ItemStack removeItem(int slot, int count) {
+        return removeChestVehicleItem(slot, count);
+    }
+
+    @Override
+    public ItemStack removeItemNoUpdate(int slot) {
+        return removeChestVehicleItemNoUpdate(slot);
+    }
+
+    @Override
+    public void setItem(int slot, ItemStack stack) {
+        setChestVehicleItem(slot, stack);
+    }
+
+    @Override
+    public SlotAccess getSlot(int slot) {
+        return getChestVehicleSlot(slot);
+    }
+
+    @Override
+    public void setChanged() {
+    }
+
+    @Override
+    public boolean stillValid(Player player) {
+        return hasChest() && isChestVehicleStillValid(player);
+    }
+
+    @Override
+    public @Nullable ResourceKey<LootTable> getContainerLootTable() {
+        return lootTable;
+    }
+
+    @Override
+    public void setContainerLootTable(@Nullable ResourceKey<LootTable> lootTable) {
+        this.lootTable = lootTable;
+    }
+
+    @Override
+    public long getContainerLootTableSeed() {
+        return lootTableSeed;
+    }
+
+    @Override
+    public void setContainerLootTableSeed(long seed) {
+        this.lootTableSeed = seed;
+    }
+
+    @Override
+    public NonNullList<ItemStack> getItemStacks() {
+        return itemStacks;
+    }
+
+    @Override
+    public void clearItemStacks() {
+        itemStacks = NonNullList.withSize(CHEST_SIZE, ItemStack.EMPTY);
+    }
+
+    @Override
+    public void stopOpen(ContainerUser user) {
+        level().gameEvent(GameEvent.CONTAINER_CLOSE, position(), GameEvent.Context.of(user.getLivingEntity()));
     }
 
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         writeLeashData(output, leashData);
         output.putFloat("heat", heat);
+        output.putBoolean("chest", hasChest());
+        if (hasChest()) addChestVehicleSaveData(output);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         readLeashData(input);
         heat = input.getFloatOr("heat", BalloonPhysics.NEUTRAL);
+        setChest(input.getBooleanOr("chest", false));
+        readChestVehicleSaveData(input);
     }
 
     @Override

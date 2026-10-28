@@ -5,6 +5,8 @@ import com.mojang.math.Axis;
 import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.BlockModelResolver;
+import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -12,6 +14,10 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /** Basket, emissive flame, and the envelope drawn twice: base gores in the primary dye, stripe gores in the secondary. */
@@ -19,13 +25,19 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
     private static final Identifier TEXTURE = HotAirBalloons.id("textures/entity/hot_air_balloon.png");
     private static final Identifier ENVELOPE = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png");
     private static final Identifier STRIPES = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes.png");
+    private static final BlockDisplayContext CHEST_CONTEXT = BlockDisplayContext.create();
+    /** Strapped to the outside of the basket's back wall, lid outward (renderer +z is behind the pilot). */
+    private static final BlockState CHEST = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.SOUTH);
+    private static final float CHEST_SCALE = 0.625F, CHEST_WALL = 14 / 16.0F;
     private final BalloonModel model, flame, envelope;
+    private final BlockModelResolver blocks;
 
     public BalloonRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.model = new BalloonModel(context.bakeLayer(BalloonModel.LAYER), BalloonModel.Part.MAIN);
         this.flame = new BalloonModel(context.bakeLayer(BalloonModel.FLAME_LAYER), BalloonModel.Part.FLAME);
         this.envelope = new BalloonModel(context.bakeLayer(BalloonModel.ENVELOPE_LAYER), BalloonModel.Part.ENVELOPE);
+        this.blocks = context.getBlockModelResolver();
         this.shadowRadius = 1.0F;
     }
 
@@ -35,6 +47,13 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         poseStack.rotateDegrees(Axis.YP, 180.0F - state.yRot);
         float hurt = state.hurtTime;
         if (hurt > 0.0F) poseStack.rotateDegrees(Axis.XP, Mth.sin(hurt) * hurt * state.damageTime / 40.0F * state.hurtDir);
+        if (!state.chest.isEmpty()) {
+            poseStack.pushPose();
+            poseStack.translate(-CHEST_SCALE / 2, 2 / 16.0F, CHEST_WALL);
+            poseStack.scale(CHEST_SCALE, CHEST_SCALE, CHEST_SCALE);
+            state.chest.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
+            poseStack.popPose();
+        }
         poseStack.scale(-1.0F, -1.0F, 1.0F);
         int light = state.lightCoords, overlay = OverlayTexture.NO_OVERLAY;
         collector.submitModel(model, state, poseStack, RenderTypes.entityCutout(TEXTURE), light, overlay, -1, null, state.outlineColor);
@@ -69,5 +88,6 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         state.swayZ = Mth.lerp(partialTicks, entity.swayZo, entity.swayZ);
         state.flame = Mth.lerp(partialTicks, entity.flameO, entity.flame);
         state.inflate = entity.inflateProgress(partialTicks);
+        blocks.update(state.chest, entity.hasChest() ? CHEST : Blocks.AIR.defaultBlockState(), CHEST_CONTEXT);
     }
 }
