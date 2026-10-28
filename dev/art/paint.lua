@@ -24,20 +24,27 @@ local function shade(c, k)
 end
 
 local GORES = 12
-local TOP, BOTTOM = 157, 68
+local TOP, BOTTOM = 183, 70
+-- Box envelope: each face is five 18-unit panels, the 2nd and 4th striped; HALF is the widest half-width.
+local HALF, PANELS = 45, 5
 
 -- Envelope: greyscale (tinted in game). Returns value and whether the texel is in an odd (stripe) gore.
 local function envelope(p, n, fc, h)
   local x, y, z = p[1], p[2], p[3]
   local r = math.sqrt(x * x + z * z)
-  local g = math.atan(z, x) / (2 * math.pi) * GORES + 0.5
-  local k = math.floor(g) % GORES
+  -- Panel coordinate along the face: x on the z faces, z on the x faces; top and bottom take the nearer face's.
+  local along
+  if n[3] ~= 0 then along = x elseif n[1] ~= 0 then along = z
+  elseif math.abs(z) >= math.abs(x) then along = x else along = z end
+  local width = 2 * HALF / PANELS
+  local g = (along + HALF) / width
+  local k = math.max(0, math.min(PANELS - 1, math.floor(g)))
   local frac = g - math.floor(g)
   local t = math.max(0, math.min(1, (y - BOTTOM) / (TOP - BOTTOM)))
   local L = 196 + 40 * (t * t * (3 - 2 * t))
   L = L + 16 * (1 - (2 * frac - 1) ^ 2) - 8
   if n[2] > 0 then L = L + 8 elseif n[2] < 0 then L = L - 34 end
-  local arc = math.min(frac, 1 - frac) * 2 * math.pi * r / GORES
+  local arc = math.min(frac, 1 - frac) * width
   if r > 4 and arc < 0.75 then L = L - 30 end
   if n[2] == 0 and y - fc.box[1][2] < 1 then L = L - 10 end
   if n[2] > 0 and y > TOP - 0.5 then

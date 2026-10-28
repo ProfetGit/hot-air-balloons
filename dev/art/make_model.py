@@ -20,6 +20,26 @@ SCALE = 1.2
 HEM = 58
 
 
+# Box envelope prototype (user, 2026-10-28): a bevelled cube instead of the teardrop. Rows are (bottom, top,
+# half-width, bevel), already at full size; the skirt stays scaled.
+# Taller than wide, with a stepped funnel down to the skirt so it reads as a balloon, not a floating block (user,
+# 2026-10-28: "box + taper"). Main faces 92..176 are flat for the emblem.
+BOX = [(70, 74, 24, 4), (74, 79, 31, 4), (79, 85, 37, 4), (85, 92, 42, 4), (92, 176, 45, 4), (176, 180, 41, 4),
+       (180, 183, 34, 6)]
+
+
+def boxy(prefix, i, y0, y1, h, b):
+    """One box layer with chamfered vertical edges: a core plus four side slabs, no overlaps."""
+    c = h - b
+    return [
+        (f"{prefix}_{i}c", (-c, y0, -c), (c, y1, c)),
+        (f"{prefix}_{i}e", (c, y0, -c), (h, y1, c)),
+        (f"{prefix}_{i}w", (-h, y0, -c), (-c, y1, c)),
+        (f"{prefix}_{i}s", (-c, y0, c), (c, y1, h)),
+        (f"{prefix}_{i}n", (-c, y0, -h), (c, y1, -c)),
+    ]
+
+
 def scaled(rows):
     return [(round(HEM + (y0 - HEM) * SCALE), round(HEM + (y1 - HEM) * SCALE), round(h * SCALE)) for y0, y1, h in rows]
 
@@ -60,8 +80,8 @@ def groups():
     for i, (y0, y1, h) in enumerate(scaled(SKIRT)):
         rigging += rounded("skirt", i, y0, y1, h)
     envelope = []
-    for i, (y0, y1, h) in enumerate(scaled(BODY)):
-        envelope += rounded("env", i, y0, y1, h)
+    for i, (y0, y1, h, b) in enumerate(BOX):
+        envelope += boxy("env", i, y0, y1, h, b)
     flame = [("flame_outer", (-3, 45, -3), (3, 61, 3)), ("flamecore_0", (-1.5, 45, -1.5), (1.5, 55, 1.5))]
     pilot = [("pilot_0", (-1, 45, -1), (1, 47, 1))]
     return [
