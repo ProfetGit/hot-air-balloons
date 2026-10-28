@@ -18,7 +18,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/** Places a balloon on the clicked ground or water, facing the way the player looks (boat-style). */
+/** Places a balloon on the clicked ground or water, facing the way the player looks (boat-style), in the item's look. */
 public class BalloonItem extends Item {
     public BalloonItem(Item.Properties properties) {
         super(properties);
@@ -37,6 +37,7 @@ public class BalloonItem extends Item {
         if (!level.noCollision(balloon, balloon.getBoundingBox())) return InteractionResult.FAIL;
         if (level instanceof ServerLevel sl) {
             EntityType.<HotAirBalloon>createDefaultStackConfig(sl, stack, player).apply(balloon);
+            balloon.setLook(stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT));
             balloon.startInflating();
             level.addFreshEntity(balloon);
             level.gameEvent(player, GameEvent.ENTITY_PLACE, at);
@@ -44,5 +45,12 @@ public class BalloonItem extends Item {
         }
         player.awardStat(Stats.ITEM_USED.get(this));
         return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, net.minecraft.world.item.component.TooltipDisplay display,
+                                java.util.function.Consumer<net.minecraft.network.chat.Component> out, net.minecraft.world.item.TooltipFlag flag) {
+        stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT).addToTooltip(out);
     }
 }

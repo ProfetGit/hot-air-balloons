@@ -63,6 +63,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     /** Server ticks left of the inflate animation after placing; never saved, so loaded balloons start inflated. */
     private static final EntityDataAccessor<Integer> DATA_INFLATE = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_CHEST = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<EnvelopeLook> DATA_LOOK = SynchedEntityData.defineId(HotAirBalloon.class, ModContent.LOOK_SERIALIZER);
     public static final int CHEST_SIZE = 27;
     /** Mobs wider than this don't fit in the basket. */
     public static final float MAX_MOB_WIDTH = 1.4F;
@@ -119,6 +120,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         entityData.define(DATA_WIND_Z, 0.0F);
         entityData.define(DATA_INFLATE, 0);
         entityData.define(DATA_CHEST, false);
+        entityData.define(DATA_LOOK, EnvelopeLook.DEFAULT);
     }
 
     @Override
@@ -128,7 +130,22 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     public ItemStack getPickResult() {
-        return new ItemStack(ModContent.BALLOON_ITEM);
+        return asItem();
+    }
+
+    /** The balloon item with this envelope's look, so a dyed balloon stays dyed when picked up again. */
+    public ItemStack asItem() {
+        ItemStack stack = new ItemStack(ModContent.BALLOON_ITEM);
+        if (!look().equals(EnvelopeLook.DEFAULT)) stack.set(ModContent.ENVELOPE, look());
+        return stack;
+    }
+
+    public EnvelopeLook look() {
+        return entityData.get(DATA_LOOK);
+    }
+
+    public void setLook(EnvelopeLook look) {
+        entityData.set(DATA_LOOK, look);
     }
 
     @Override
@@ -400,6 +417,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         InteractionResult r = super.interact(player, hand, location);
         if (r != InteractionResult.PASS) return r;
         ItemStack held = player.getItemInHand(hand);
+        InteractionResult looks = restyle(player, held);
+        if (looks != InteractionResult.PASS) return looks;
         if (!hasChest() && held.is(Items.CHEST) && !player.isSecondaryUseActive()) {
             if (!level().isClientSide()) {
                 setChest(true);
@@ -419,6 +438,54 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return InteractionResult.SUCCESS;
     }
 
+    /**
+     * Dye: base gores, or the stripes while sneaking. Banner: becomes the emblem (any earlier one comes back as a
+     * banner). Shears: take the emblem off. All consume like vanilla (not in creative).
+     */
+    private InteractionResult restyle(Player player, ItemStack held) {
+        EnvelopeLook look = look();
+        net.minecraft.world.item.DyeColor dye = held.get(net.minecraft.core.component.DataComponents.DYE);
+        if (dye != null && !(held.getItem() instanceof net.minecraft.world.item.BannerItem)) {
+            boolean stripes = player.isSecondaryUseActive();
+            if ((stripes ? look.stripes() : look.base()) == dye) return InteractionResult.PASS;
+            if (!level().isClientSide()) {
+                setLook(stripes ? look.withStripes(dye) : look.withBase(dye));
+                held.consume(1, player);
+            }
+            playSound(SoundEvents.DYE_USE, 1.0F, 1.0F);
+            return InteractionResult.SUCCESS;
+        }
+        if (held.getItem() instanceof net.minecraft.world.item.BannerItem banner && !player.isSecondaryUseActive()) {
+            if (!level().isClientSide()) {
+                ItemStack old = emblemBanner(look);
+                setLook(look.withEmblem(banner.getColor(), held.getOrDefault(net.minecraft.core.component.DataComponents.BANNER_PATTERNS,
+                    net.minecraft.world.level.block.entity.BannerPatternLayers.EMPTY)));
+                held.consume(1, player);
+                if (!old.isEmpty() && !player.hasInfiniteMaterials()) player.getInventory().placeItemBackInInventory(old, net.minecraft.util.Prediction.SERVER_ONLY);
+            }
+            playSound(SoundEvents.ARMOR_EQUIP_LEATHER.value(), 1.0F, 1.0F);
+            return InteractionResult.SUCCESS;
+        }
+        if (held.is(Items.SHEARS) && look.emblemBase().isPresent() && !player.isSecondaryUseActive()) {
+            if (!level().isClientSide()) {
+                ItemStack old = emblemBanner(look);
+                setLook(look.withoutEmblem());
+                if (!player.hasInfiniteMaterials()) player.getInventory().placeItemBackInInventory(old, net.minecraft.util.Prediction.SERVER_ONLY);
+            }
+            playSound(SoundEvents.SHEEP_SHEAR, 1.0F, 1.0F);
+            return InteractionResult.SUCCESS;
+        }
+        return InteractionResult.PASS;
+    }
+
+    /** The banner an emblem was made from, to give back; empty without one. */
+    private static ItemStack emblemBanner(EnvelopeLook look) {
+        if (look.emblemBase().isEmpty()) return ItemStack.EMPTY;
+        ItemStack stack = new ItemStack(Items.BANNER.pick(look.emblemBase().get()));
+        if (!look.emblem().layers().isEmpty()) stack.set(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, look.emblem());
+        return stack;
+    }
+
     public boolean hasChest() {
         return entityData.get(DATA_CHEST);
     }
@@ -429,7 +496,12 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     public void destroy(ServerLevel level, DamageSource source) {
-        destroy(level, getDropItem());
+        kill(level);
+        if (level.getGameRules().get(GameRules.ENTITY_DROPS)) {
+            ItemStack stack = asItem();
+            stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, getCustomName());
+            spawnAtLocation(level, stack);
+        }
         if (hasChest()) {
             if (level.getGameRules().get(GameRules.ENTITY_DROPS)) spawnAtLocation(level, new ItemStack(Items.CHEST));
             chestVehicleDestroyed(source, level, this);
@@ -543,6 +615,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         writeLeashData(output, leashData);
         output.putFloat("heat", heat);
         output.putBoolean("chest", hasChest());
+        if (!look().equals(EnvelopeLook.DEFAULT)) output.store("look", EnvelopeLook.CODEC, look());
         if (hasChest()) addChestVehicleSaveData(output);
     }
 
@@ -551,6 +624,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         readLeashData(input);
         heat = input.getFloatOr("heat", BalloonPhysics.NEUTRAL);
         setChest(input.getBooleanOr("chest", false));
+        setLook(input.read("look", EnvelopeLook.CODEC).orElse(EnvelopeLook.DEFAULT));
         readChestVehicleSaveData(input);
     }
 

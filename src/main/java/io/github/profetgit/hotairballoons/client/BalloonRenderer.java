@@ -3,6 +3,7 @@ package io.github.profetgit.hotairballoons.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import io.github.profetgit.hotairballoons.HotAirBalloons;
+import io.github.profetgit.hotairballoons.entity.EnvelopeLook;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
@@ -17,10 +18,14 @@ import net.minecraft.util.Mth;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
-/** Basket, emissive flame, and the envelope drawn twice: base gores in the primary dye, stripe gores in the secondary. */
+/**
+ * Basket, emissive flame, the envelope drawn twice (base gores in the base dye, stripe gores in the stripe dye), then
+ * one envelope pass per emblem layer ({@link EmblemTextures}), and the chest on the back wall.
+ */
 public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRenderState> {
     private static final Identifier TEXTURE = HotAirBalloons.id("textures/entity/hot_air_balloon.png");
     private static final Identifier ENVELOPE = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png");
@@ -59,6 +64,10 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         collector.submitModel(model, state, poseStack, RenderTypes.entityCutout(TEXTURE), light, overlay, -1, null, state.outlineColor);
         collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(ENVELOPE), light, overlay, state.primary, null, state.outlineColor);
         collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(STRIPES), light, overlay, state.secondary, null, state.outlineColor);
+        for (int i = 0; i < state.emblemCount; i++) {
+            collector.submitModel(envelope, state, poseStack, RenderTypes.entityTranslucent(state.emblemTextures[i]), light, overlay,
+                state.emblemColors[i], null, state.outlineColor);
+        }
         collector.submitModel(flame, state, poseStack, RenderTypes.eyes(TEXTURE), light, overlay, -1, null, 0);
         poseStack.popPose();
         super.submit(state, poseStack, collector, camera);
@@ -89,5 +98,23 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         state.flame = Mth.lerp(partialTicks, entity.flameO, entity.flame);
         state.inflate = entity.inflateProgress(partialTicks);
         blocks.update(state.chest, entity.hasChest() ? CHEST : Blocks.AIR.defaultBlockState(), CHEST_CONTEXT);
+        EnvelopeLook look = entity.look();
+        state.primary = look.base().getTextureDiffuseColor();
+        state.secondary = look.stripes().getTextureDiffuseColor();
+        state.emblemCount = 0;
+        if (look.emblemBase().isPresent()) {
+            Identifier base = EmblemTextures.base();
+            if (base != null) add(state, base, look.emblemBase().get().getTextureDiffuseColor());
+            for (BannerPatternLayers.Layer layer : look.emblem().layers()) {
+                Identifier tex = EmblemTextures.pattern(layer.pattern().value().assetId());
+                if (tex != null) add(state, tex, layer.color().getTextureDiffuseColor());
+            }
+        }
+    }
+
+    private static void add(BalloonRenderState state, Identifier texture, int color) {
+        if (state.emblemCount >= state.emblemTextures.length) return;
+        state.emblemTextures[state.emblemCount] = texture;
+        state.emblemColors[state.emblemCount++] = color;
     }
 }

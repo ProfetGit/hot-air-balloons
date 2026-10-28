@@ -3,6 +3,7 @@ package io.github.profetgit.hotairballoons.selftest;
 import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.ModContent;
 import io.github.profetgit.hotairballoons.client.HotAirBalloonsClient;
+import io.github.profetgit.hotairballoons.entity.EnvelopeLook;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +63,7 @@ final class Scenarios {
         if (only.equals("all") || only.contains("weather")) weather(s);
         if (only.equals("all") || only.contains("showcase")) showcase(s);
         if (only.equals("all") || only.contains("cargo")) cargo(s);
+        if (only.equals("all") || only.contains("looks")) looks(s);
         return s;
     }
 
@@ -362,6 +364,138 @@ final class Scenarios {
                 SelfTest.record("break drops balloon, chest and contents", balloon && chest && diamonds,
                     "balloon " + balloon + ", chest " + chest + ", diamonds " + diamonds);
             });
+    }
+
+    private static ItemStack banner(MinecraftServer server, net.minecraft.world.item.Item item, Object... layers) {
+        var reg = server.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN);
+        var b = new net.minecraft.world.level.block.entity.BannerPatternLayers.Builder();
+        for (int i = 0; i < layers.length; i += 2) {
+            @SuppressWarnings("unchecked")
+            var key = (net.minecraft.resources.ResourceKey<net.minecraft.world.level.block.entity.BannerPattern>) layers[i];
+            b.add(reg.getOrThrow(key), (net.minecraft.world.item.DyeColor) layers[i + 1]);
+        }
+        ItemStack stack = new ItemStack(item);
+        stack.set(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, b.build());
+        return stack;
+    }
+
+    /**
+     * M5: dye the base and (sneaking) the stripes, put a banner on as the emblem, see it on both sides, swap banners
+     * (the old one comes back), shear it off, keep the look through break and re-place, then all 16 dyes in a row.
+     */
+    private static void looks(Script s) {
+        double[] at = new double[3];
+        s.run(mc -> {
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+                if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+            })
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                p.setNoGravity(false);
+                ServerLevel sl = (ServerLevel) p.level();
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set 5000");
+                at[0] = Math.floor(p.getX()) + 0.5;
+                at[2] = Math.floor(p.getZ()) - 80.5;
+                at[1] = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(at[0]), (int) Math.floor(at[2]));
+                p.teleportTo(at[0] + 3, at[1], at[2]);
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(at[0], at[1], at[2]);
+                b.setYRot(0);
+                sl.addFreshEntity(b);
+                balloonId = b.getUUID();
+            })
+            .waitTicks(5)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.BLUE), 2));
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.YELLOW), 2));
+                p.setShiftKeyDown(true);
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                p.setShiftKeyDown(false);
+                SelfTest.record("dye colours base, sneak-dye the stripes", b.look().base() == net.minecraft.world.item.DyeColor.BLUE
+                    && b.look().stripes() == net.minecraft.world.item.DyeColor.YELLOW && p.getMainHandItem().getCount() == 1,
+                    b.look() + ", hand " + p.getMainHandItem());
+                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK),
+                    net.minecraft.world.level.block.entity.BannerPatterns.CREEPER, net.minecraft.world.item.DyeColor.LIME,
+                    net.minecraft.world.level.block.entity.BannerPatterns.BORDER, net.minecraft.world.item.DyeColor.WHITE));
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("banner becomes the emblem", b.look().emblemBase().orElse(null) == net.minecraft.world.item.DyeColor.BLACK
+                    && b.look().emblem().layers().size() == 2 && p.getMainHandItem().isEmpty(), b.look() + ", hand " + p.getMainHandItem());
+            })
+            .waitTicks(5)
+            .check("client draws base, stripes and 3 emblem layers", mc -> {
+                HotAirBalloon b = mc.level.getEntitiesOfClass(HotAirBalloon.class, new AABB(at[0] - 2, at[1] - 2, at[2] - 2, at[0] + 2, at[1] + 2, at[2] + 2)).getFirst();
+                var r = (io.github.profetgit.hotairballoons.client.BalloonRenderer) mc.getEntityRenderDispatcher().getRenderer(b);
+                var st = r.createRenderState();
+                r.extractRenderState(b, st, 0);
+                return st.emblemCount == 3 && st.primary == net.minecraft.world.item.DyeColor.BLUE.getTextureDiffuseColor() ? null
+                    : "emblem layers " + st.emblemCount + ", primary " + Integer.toHexString(st.primary);
+            })
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0], at[1] + 1, at[2] + 14, at[0], at[1] + 7.4, at[2]))
+            .waitTicks(20)
+            .capture("still_look_south", 1)
+            .waitTicks(5)
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0], at[1] + 1, at[2] - 14, at[0], at[1] + 7.4, at[2]))
+            .waitTicks(20)
+            .capture("still_look_north", 1)
+            .waitTicks(5)
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0] + 14, at[1] + 1, at[2], at[0], at[1] + 7.4, at[2]))
+            .waitTicks(20)
+            .capture("still_look_side", 1)
+            .waitTicks(5)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.teleportTo(at[0] + 3, at[1], at[2]);
+                p.getInventory().clearContent();
+                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.WHITE),
+                    net.minecraft.world.level.block.entity.BannerPatterns.STRIPE_CENTER, net.minecraft.world.item.DyeColor.RED));
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                boolean back = p.getInventory().contains(st -> st.is(Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK))
+                    && st.getOrDefault(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, net.minecraft.world.level.block.entity.BannerPatternLayers.EMPTY).layers().size() == 2);
+                SelfTest.record("new banner swaps in, old one comes back", back && b.look().emblemBase().orElse(null) == net.minecraft.world.item.DyeColor.WHITE,
+                    "old back " + back + ", " + b.look());
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.SHEARS));
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                boolean white = p.getInventory().contains(st -> st.is(Items.BANNER.pick(net.minecraft.world.item.DyeColor.WHITE)));
+                SelfTest.record("shears take the emblem off", b.look().emblemBase().isEmpty() && white, b.look() + ", white banner back " + white);
+                b.setLook(b.look().withEmblem(net.minecraft.world.item.DyeColor.BLACK, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK),
+                    net.minecraft.world.level.block.entity.BannerPatterns.CREEPER, net.minecraft.world.item.DyeColor.LIME)
+                    .get(net.minecraft.core.component.DataComponents.BANNER_PATTERNS)));
+                var want = b.look();
+                p.teleportTo(at[0] + 30, at[1] + 1, at[2]);
+                ServerLevel sl = (ServerLevel) b.level();
+                b.hurtServer(sl, sl.damageSources().generic(), 100);
+                List<ItemEntity> drops = sl.getEntitiesOfClass(ItemEntity.class, new AABB(at[0] - 4, -64, at[2] - 4, at[0] + 4, 320, at[2] + 4),
+                    e -> e.getItem().is(ModContent.BALLOON_ITEM));
+                ItemStack item = drops.isEmpty() ? ItemStack.EMPTY : drops.getFirst().getItem().copy();
+                SelfTest.record("dropped balloon keeps its look", want.equals(item.get(ModContent.ENVELOPE)), "item " + item.get(ModContent.ENVELOPE));
+                drops.forEach(Entity::discard);
+                p.teleportTo(at[0], at[1] + 0.5, at[2] + 4);
+                p.snapTo(at[0], at[1] + 0.5, at[2] + 4, 180, 70);
+                p.setItemInHand(InteractionHand.MAIN_HAND, item);
+                ModContent.BALLOON_ITEM.use(p.level(), p, InteractionHand.MAIN_HAND);
+                var placed = sl.getEntitiesOfClass(HotAirBalloon.class, p.getBoundingBox().inflate(8));
+                SelfTest.record("placed balloon wears the item's look", placed.size() == 1 && placed.getFirst().look().equals(want),
+                    placed.isEmpty() ? "none placed" : placed.getFirst().look().toString());
+                placed.forEach(Entity::discard);
+                var dyes = net.minecraft.world.item.DyeColor.values();
+                for (int i = 0; i < dyes.length; i++) {
+                    HotAirBalloon g = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                    double x = at[0] - 24 + (i % 8) * 7, z = at[2] - 10 - (i / 8) * 10;
+                    g.setInitialPos(x, sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z)) + (i / 8) * 4, z);
+                    g.setLook(EnvelopeLook.DEFAULT.withBase(dyes[i]).withStripes(dyes[(i + 8) % 16]));
+                    sl.addFreshEntity(g);
+                }
+                look(p, at[0], at[1] + 6, at[2] + 26, at[0], at[1] + 8, at[2] - 15);
+            })
+            .waitTicks(40)
+            .capture("still_dyes", 1)
+            .waitTicks(5)
+            .run(mc -> mc.gui.hud.toggle());
     }
 
     private static HotAirBalloon serverBalloon(MinecraftServer server) {
