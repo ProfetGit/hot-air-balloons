@@ -1,12 +1,13 @@
 """layout.json -> textures/entity/hot_air_balloon_emblem_map.png: where a banner goes on the envelope.
 
-Each envelope texel on the outermost front (+z) or back (-z) face inside the emblem rectangle gets R = banner flag
-column (0..19), G = flag row (0..39), A = 255; the back is mirrored so both read correctly from outside. The client
-(EmblemTextures) turns this map plus a banner pattern texture into a tinted envelope layer, so no vanilla texture
-ships in the jar. The emblem is the banner's 20x40 pixels at 2x2 texels each (40x80 model units, 2.5 x 5 blocks;
-user, 2026-10-28: bigger), on the envelope's belly where the front faces are at least 40 units wide.
+Each envelope texel on the outermost face of an emblem side inside the emblem rectangle gets R = banner flag column
+(0..19), G = flag row (0..39), A = 255, oriented to read correctly from outside that side. The client (EmblemTextures)
+turns this map plus a banner pattern texture into a tinted envelope layer, so no vanilla texture ships in the jar.
+The emblem is the banner's 20x40 pixels at 2x2 texels each (40x80 model units, 2.5 x 5 blocks). Box prototype: all
+four sides, on the flat main faces.
 """
 import json
+import math
 from pathlib import Path
 
 from PIL import Image
@@ -15,58 +16,56 @@ HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "src/main/resources/assets/hotairballoons/textures/entity/hot_air_balloon_emblem_map.png"
 S = 2
 W, H = 20 * S, 40 * S
-Y_TOP = 169
-# Step faces at least this far out (the emblem rows' front faces sit at depth 36..48).
-STEP_DEPTH = 36
+Y_TOP = 160
+# (axis, sign): the faces looking along +z, -z, +x, -x. "right" is the viewer's right on that side, as (axis, sign).
+SIDES = [((2, 1), (0, 1)), ((2, -1), (0, -1)), ((0, 1), (2, -1)), ((0, -1), (2, 1))]
+# Horizontal step faces at least this far out carry the emblem too (none on the box's flat main faces).
+STEP_DEPTH = 40
 
 
 def main():
     d = json.loads((HERE / "layout.json").read_text())
     aw, ah = d["atlases"]["envelope"]
     best = {}
-    for f in d["faces"]:
-        if f["atlas"] != "envelope" or f["n"][0] != 0 or f["n"][1] != 0:
-            continue
-        side = f["n"][2]
-        x0, y0, x1, y1 = f["rect"]
-        for j in range(y0, y1):
-            for i in range(x0, x1):
-                a, b = i - x0 + 0.5, j - y0 + 0.5
-                p = [f["o"][k] + a * f["du"][k] + b * f["dv"][k] for k in range(3)]
-                key = (side, round(p[0] - 0.5), round(p[1] - 0.5))
-                depth = p[2] * side
-                if key not in best or depth > best[key][0]:
-                    best[key] = (depth, i, j)
-    # The short horizontal faces where the layers step out cross the emblem as dark lines unless they carry it too:
-    # each takes the flag row next to its plane.
     steps = []
     for f in d["faces"]:
-        if f["atlas"] != "envelope" or f["n"][1] == 0:
+        if f["atlas"] != "envelope":
             continue
+        n = f["n"]
         x0, y0, x1, y1 = f["rect"]
         for j in range(y0, y1):
             for i in range(x0, x1):
                 a, b = i - x0 + 0.5, j - y0 + 0.5
                 p = [f["o"][k] + a * f["du"][k] + b * f["dv"][k] for k in range(3)]
-                side = 1 if p[2] > 0 else -1
-                if p[2] * side >= STEP_DEPTH:
-                    steps.append((side, int(p[0] // 1), int((p[1] - 0.5) // 1), i, j))
+                if n[1] == 0:
+                    for side, right in SIDES:
+                        ax, sg = side
+                        if n[ax] * sg <= 0 or n[2 - ax] != 0:
+                            continue
+                        key = (side, math.floor(p[right[0]] * right[1]), math.floor(p[1]))
+                        depth = p[ax] * sg
+                        if key not in best or depth > best[key][0]:
+                            best[key] = (depth, i, j)
+                else:
+                    ax = 2 if abs(p[2]) >= abs(p[0]) else 0
+                    sg = 1 if p[ax] > 0 else -1
+                    if p[ax] * sg >= STEP_DEPTH:
+                        side, right = next(s for s in SIDES if s[0] == (ax, sg))
+                        steps.append((side, math.floor(p[right[0]] * right[1]), math.floor(p[1] - 0.5), i, j))
     img = Image.new("RGBA", (aw, ah), (0, 0, 0, 0))
     px = img.load()
-    hits = {1: 0, -1: 0}
-    for (side, x, y), (_, i, j) in best.items():
-        u = x + W // 2 if side > 0 else W // 2 - 1 - x
-        v = Y_TOP - 1 - y
+    hits = {}
+    for (side, c, y), (_, i, j) in best.items():
+        u, v = c + W // 2, Y_TOP - 1 - y
         if 0 <= u < W and 0 <= v < H:
             px[i, j] = (u // S, v // S, 0, 255)
-            hits[side] += 1
-    for side, x, y, i, j in steps:
-        u = x + W // 2 if side > 0 else W // 2 - 1 - x
-        v = Y_TOP - 1 - y
+            hits[side] = hits.get(side, 0) + 1
+    for side, c, y, i, j in steps:
+        u, v = c + W // 2, Y_TOP - 1 - y
         if 0 <= u < W and 0 <= v < H and px[i, j][3] == 0:
             px[i, j] = (u // S, v // S, 0, 255)
     img.save(OUT)
-    print(f"{OUT.name}: front {hits[1]} / back {hits[-1]} of {W * H} texels each")
+    print(f"{OUT.name}: " + ", ".join(f"{s}: {hits.get(s, 0)}" for s, _ in SIDES) + f" of {W * H} texels each")
 
 
 if __name__ == "__main__":

@@ -27,8 +27,8 @@ def main():
     path = Path(sys.argv[1]).resolve()
     sid, _ = call("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "hab-bb", "version": "1"}})
     call("notifications/initialized", {}, sid, notify=True)
-    code = ("(window.BB_LOCK && window.BB_LOCK.until > Date.now() && window.BB_LOCK.owner !== 'hab') ? {busy: window.BB_LOCK} : "
-            f"(window.BB_LOCK = {{owner: 'hab', until: Date.now() + 60000}}, eval(require('fs').readFileSync({json.dumps(str(path))}, 'utf8')))")
+    code = ("(window.BB_LOCK && window.BB_LOCK.until > Date.now() && window.BB_LOCK.owner !== 'habbox') ? {busy: window.BB_LOCK} : "
+            f"(window.BB_LOCK = {{owner: 'habbox', until: Date.now() + 60000}}, eval(require('fs').readFileSync({json.dumps(str(path))}, 'utf8')))")
     _, res = call("tools/call", {"name": "risky_eval", "arguments": {"code": code}}, sid)
     print(json.dumps(res.get("result", res))[:400])
 

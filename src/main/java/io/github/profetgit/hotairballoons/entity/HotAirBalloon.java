@@ -86,7 +86,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private static final double RIDE_HEIGHT = 0.6 + 2.0 / 16.0;
     private static final double SEAT_OFFSET = 0.42;
     /** Envelope box relative to the basket floor: skirt hem to crown of dev/art/balloon.bbmodel (16 units per block). */
-    public static final double ENVELOPE_HALF = 48 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 177 / 16.0;
+    public static final double ENVELOPE_HALF = 46 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 170 / 16.0;
     /** Slack rope length before the tether pulls; vanilla's lead snaps at 12. */
     public static final double ROPE = 8.0;
 
