@@ -51,6 +51,35 @@ public final class BalloonPhysics {
         return new double[] {-Math.sin(r) * a, Math.cos(r) * a};
     }
 
+    /**
+     * One horizontal axis: drag acts on the speed relative to the air, so with no thrust the balloon settles to the
+     * wind's speed (pass wind 0 on the ground or tethered).
+     */
+    public static double horizontal(double v, double wind, double thrust, double drag) {
+        return wind + (v - wind) * drag + thrust;
+    }
+
+    public static final double TETHER_STIFFNESS = 0.04;
+    public static final double TETHER_MAX_PULL = 0.3;
+
+    /**
+     * Rope to an anchor: (dx, dy, dz) = balloon minus anchor. Inside the slack it does nothing; past it, the outward
+     * part of the velocity is mostly cancelled and a spring pulls back, capped so it never yanks.
+     */
+    public static double[] tether(double dx, double dy, double dz, double vx, double vy, double vz, double rope) {
+        double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d <= rope || d < 1e-6) return new double[] {vx, vy, vz};
+        double nx = dx / d, ny = dy / d, nz = dz / d;
+        double out = vx * nx + vy * ny + vz * nz;
+        if (out > 0) {
+            vx -= nx * out * 0.8;
+            vy -= ny * out * 0.8;
+            vz -= nz * out * 0.8;
+        }
+        double pull = Math.min(TETHER_MAX_PULL, (d - rope) * TETHER_STIFFNESS);
+        return new double[] {vx - nx * pull, vy - ny * pull, vz - nz * pull};
+    }
+
     public static float yawSpeed(float speed, boolean left, boolean right) {
         if (left) speed -= YAW_ACCEL;
         if (right) speed += YAW_ACCEL;

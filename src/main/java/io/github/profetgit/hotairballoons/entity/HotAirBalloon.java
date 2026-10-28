@@ -1,6 +1,7 @@
 package io.github.profetgit.hotairballoons.entity;
 
 import io.github.profetgit.hotairballoons.ModContent;
+import java.util.List;
 import java.util.function.Supplier;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -24,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -42,6 +44,10 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
     /** Rider feet sit this high above the entity origin (the basket floor). */
     private static final double RIDE_HEIGHT = 0.6;
     private static final double SEAT_OFFSET = 0.42;
+    /** Envelope box relative to the basket floor, matching {@code BalloonModel} (16 model units per block). */
+    public static final double ENVELOPE_HALF = 2.25, ENVELOPE_BOTTOM = 3.5, ENVELOPE_TOP = 8.5;
+    /** Slack rope length before the tether pulls; vanilla's lead snaps at 12. */
+    public static final double ROPE = 8.0;
 
     /** Set by the client entry: the local player's keys. Null on a dedicated server. */
     public static @Nullable Supplier<Input> localInput;
@@ -153,7 +159,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         boolean burner = in != null && in.jump();
         boolean vent = in != null && in.sprint();
         if (!level().isClientSide() || isLocalInstanceAuthoritative()) {
-            heat = BalloonPhysics.heat(heat, burner, vent, piloted);
+            heat = BalloonPhysics.heat(heat, burner, vent, piloted || isLeashed());
             burning = burner && piloted;
         }
         if (level() instanceof ServerLevel sl) {
@@ -190,14 +196,32 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         }
         setYRot(getYRot() + yawSpeed);
         double drag = grounded ? BalloonPhysics.GROUND_DRAG : BalloonPhysics.AIR_DRAG;
-        vx *= drag;
-        vz *= drag;
-        if (!grounded && !isLeashed()) {
-            Vec3 w = wind();
-            vx += (w.x - vx) * (1 - BalloonPhysics.AIR_DRAG);
-            vz += (w.z - vz) * (1 - BalloonPhysics.AIR_DRAG);
+        Vec3 w = grounded ? Vec3.ZERO : wind();
+        vx = BalloonPhysics.horizontal(vx, w.x, 0, drag);
+        vz = BalloonPhysics.horizontal(vz, w.z, 0, drag);
+        Entity anchor = getLeashHolder();
+        if (anchor != null) {
+            Vec3 d = position().subtract(anchor.position());
+            double[] t = BalloonPhysics.tether(d.x, d.y, d.z, vx, vy, vz, ROPE);
+            vx = t[0];
+            vy = t[1];
+            vz = t[2];
         }
-        setDeltaMovement(vx, vy, vz);
+        Vec3 want = new Vec3(vx, vy, vz);
+        Vec3 ok = collideBoundingBox(this, want, envelopeBox(), level(), List.of());
+        setDeltaMovement(ok.x != want.x ? 0 : vx, ok.y != want.y ? Math.min(0, vy) : vy, ok.z != want.z ? 0 : vz);
+    }
+
+    /** The envelope's box in the world: the basket box only covers the basket, so the canopy needs its own check. */
+    public AABB envelopeBox() {
+        return new AABB(getX() - ENVELOPE_HALF, getY() + ENVELOPE_BOTTOM, getZ() - ENVELOPE_HALF,
+            getX() + ENVELOPE_HALF, getY() + ENVELOPE_TOP, getZ() + ENVELOPE_HALF);
+    }
+
+    /** The rope pull is ours (see {@link #fly}): vanilla's runs on the server only, but the pilot's client moves us. */
+    @Override
+    public boolean checkElasticInteractions(Entity leashHolder, Leashable.LeashData leashData) {
+        return false;
     }
 
     @Override

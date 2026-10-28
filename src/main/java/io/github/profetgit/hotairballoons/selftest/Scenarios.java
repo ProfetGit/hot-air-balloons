@@ -5,6 +5,17 @@ import io.github.profetgit.hotairballoons.ModContent;
 import io.github.profetgit.hotairballoons.client.HotAirBalloonsClient;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import java.util.List;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerLevel;
@@ -27,6 +38,7 @@ final class Scenarios {
     private static final Input BURN_FORWARD = new Input(true, false, false, false, true, false, false);
     private static final Input VENT = new Input(false, false, false, false, false, false, true);
     private static double groundY, startX, startZ, highY;
+    private static UUID balloonId;
 
     private Scenarios() {}
 
@@ -44,7 +56,105 @@ final class Scenarios {
             .waitTicks(40)
             .check("world loaded", mc -> mc.player.isAlive() ? null : "player not alive");
         ride(s);
+        weather(s);
         return s;
+    }
+
+    private static HotAirBalloon serverBalloon(MinecraftServer server) {
+        return (HotAirBalloon) server.overworld().getEntity(balloonId);
+    }
+
+    /** M2: drift with the wind, stop under a ceiling, leash to a mooring post, climb against the rope, hover tethered. */
+    private static void weather(Script s) {
+        double[] drift = new double[5];
+        BlockPos[] post = new BlockPos[1];
+        int[] ceiling = new int[1];
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = ModContent.BALLOON.create(p.level(), EntitySpawnReason.COMMAND);
+                b.setInitialPos(p.getX() + 6, p.getY(), p.getZ());
+                p.level().addFreshEntity(b);
+                balloonId = b.getUUID();
+                p.startRiding(b);
+            })
+            .until("boarded the second balloon", 100, mc -> balloon(mc) != null)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(60)
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .waitTicks(40)
+            .run(mc -> {
+                drift[0] = balloon(mc).getX();
+                drift[1] = balloon(mc).getZ();
+            })
+            .waitTicks(150)
+            .check("drifts with the wind", mc -> {
+                HotAirBalloon b = balloon(mc);
+                double dx = b.getX() - drift[0], dz = b.getZ() - drift[1];
+                Vec3 w = b.wind();
+                double want = w.horizontalDistance() * 150;
+                double cos = (dx * w.x + dz * w.z) / (Math.hypot(dx, dz) * w.horizontalDistance() + 1e-9);
+                String what = String.format("moved %.2f (wind %.4f/t, expect ~%.2f), cos %.2f", Math.hypot(dx, dz), w.horizontalDistance(), want, cos);
+                return Math.hypot(dx, dz) > 0.6 * want && cos > 0.85 ? null : what;
+            })
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                ceiling[0] = (int) Math.floor(b.getY() + HotAirBalloon.ENVELOPE_TOP) + 3;
+                BlockPos c = BlockPos.containing(b.getX(), ceiling[0], b.getZ());
+                for (BlockPos q : BlockPos.betweenClosed(c.offset(-6, 0, -6), c.offset(6, 0, 6))) {
+                    b.level().setBlock(q, Blocks.STONE.defaultBlockState(), 3);
+                }
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(120)
+            .check("envelope stops under a ceiling", mc -> {
+                double top = balloon(mc).envelopeBox().maxY;
+                return top <= ceiling[0] + 1e-3 && top > ceiling[0] - 1.5 ? null : String.format("envelope top %.2f, ceiling %d", top, ceiling[0]);
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = VENT)
+            .until("landing", 1600, mc -> balloon(mc) != null && balloon(mc).onGround())
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                BlockPos c = BlockPos.containing(b.getX(), ceiling[0], b.getZ());
+                for (BlockPos q : BlockPos.betweenClosed(c.offset(-6, 0, -6), c.offset(6, 0, 6))) sl.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
+                post[0] = BlockPos.containing(b.getX() + 3, b.getY(), b.getZ());
+                sl.setBlock(post[0], ModContent.MOORING_POST.defaultBlockState(), 3);
+                p.stopRiding();
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.LEAD));
+                p.interactOn(b, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("lead ties to the balloon", b.getLeashHolder() == p, "holder " + b.getLeashHolder());
+                InteractionResult r = sl.getBlockState(post[0]).useWithoutItem(sl, p, new BlockHitResult(Vec3.atCenterOf(post[0]), Direction.UP, post[0], false));
+                SelfTest.record("post takes the lead", b.getLeashHolder() instanceof LeashFenceKnotEntity, r + ", holder " + b.getLeashHolder());
+                p.startRiding(b);
+            })
+            .until("back aboard", 100, mc -> balloon(mc) != null)
+            .waitTicks(40)
+            .check("client sees the rope", mc -> balloon(mc).isLeashed() ? null : "not leashed on the client")
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(300)
+            .check("rope holds a burning balloon", mc -> {
+                HotAirBalloon b = balloon(mc);
+                double d = b.position().distanceTo(Vec3.atBottomCenterOf(post[0]));
+                return b.isLeashed() && d < 12 && b.getY() > post[0].getY() + 5 ? null
+                    : String.format("leashed %s, %.2f from the post, %.2f above it", b.isLeashed(), d, b.getY() - post[0].getY());
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.stopRiding();
+                p.teleportTo(post[0].getX() + 2.5, post[0].getY(), post[0].getZ() + 0.5);
+                drift[2] = b.getY();
+            })
+            .waitTicks(200)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                double d = b.position().distanceTo(Vec3.atBottomCenterOf(post[0]));
+                SelfTest.record("moored balloon hovers unmanned", b.isLeashed() && Math.abs(b.getY() - drift[2]) < 2 && d < 12,
+                    String.format("leashed %s, y %.2f -> %.2f, %.2f from the post", b.isLeashed(), drift[2], b.getY(), d));
+            });
     }
 
     /**

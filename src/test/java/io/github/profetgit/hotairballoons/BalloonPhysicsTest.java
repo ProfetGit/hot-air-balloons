@@ -64,4 +64,32 @@ class BalloonPhysicsTest {
         }
         assertTrue(Math.hypot(a[0], a[1]) <= Wind.MAX_SPEED + 1e-9);
     }
+
+    @Test
+    void driftSettlesToTheWindAndThrustAddsOnTop() {
+        double v = 0;
+        for (int i = 0; i < 400; i++) v = BalloonPhysics.horizontal(v, 0.03, 0, BalloonPhysics.AIR_DRAG);
+        assertEquals(0.03, v, 1e-4);
+        double fast = 0;
+        for (int i = 0; i < 400; i++) fast = BalloonPhysics.horizontal(fast + BalloonPhysics.THRUST, 0.0, 0, BalloonPhysics.AIR_DRAG);
+        assertTrue(fast > 0.08 && fast < 0.12, "top speed " + fast);
+    }
+
+    @Test
+    void tetherHoldsABurningBalloonNearTheRope() {
+        double x = 0, y = 0, vx = 0, vy = 0;
+        for (int i = 0; i < 2000; i++) {
+            vy = BalloonPhysics.climb(vy, 1.0F, 100 + y, 320);
+            vx = BalloonPhysics.horizontal(vx, 0.035, 0, BalloonPhysics.AIR_DRAG);
+            double[] t = BalloonPhysics.tether(x, y, 0, vx, vy, 0, 8);
+            vx = t[0];
+            vy = t[1];
+            x += vx;
+            y += vy;
+        }
+        double d = Math.hypot(x, y);
+        assertTrue(d > 8 && d < 12, "rope at " + d + " (snaps at 12)");
+        double[] slack = BalloonPhysics.tether(1, 2, 3, 0.1, 0.1, 0.1, 8);
+        assertEquals(0.1, slack[0]);
+    }
 }

@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": { "N": "minecraft:iron_nugget", "L": "#minecraft:logs" },
+  "pattern": [ "N", "L", "L" ],
+  "result": { "id": "hotairballoons:mooring_post", "count": 2 }
+}
