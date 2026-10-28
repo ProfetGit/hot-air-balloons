@@ -468,8 +468,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     }
 
     /**
-     * Dye: base gores, or the stripes while sneaking. Banner: becomes the emblem (any earlier one comes back as a
-     * banner). Shears: take the emblem off. All consume like vanilla (not in creative).
+     * Dye: base gores, or the stripes while sneaking. Banner: the envelope takes its colours and patterns (any earlier
+     * banner comes back). Shears: take the emblem off. All consume like vanilla (not in creative).
      */
     private InteractionResult restyle(Player player, ItemStack held) {
         EnvelopeLook look = look();
@@ -487,7 +487,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         if (held.getItem() instanceof net.minecraft.world.item.BannerItem banner && !player.isSecondaryUseActive()) {
             if (!level().isClientSide()) {
                 ItemStack old = emblemBanner(look);
-                setLook(look.withEmblem(banner.getColor(), held.getOrDefault(net.minecraft.core.component.DataComponents.BANNER_PATTERNS,
+                setLook(look.wearing(banner.getColor(), held.getOrDefault(net.minecraft.core.component.DataComponents.BANNER_PATTERNS,
                     net.minecraft.world.level.block.entity.BannerPatternLayers.EMPTY)));
                 held.consume(1, player);
                 if (!old.isEmpty() && !player.hasInfiniteMaterials()) player.getInventory().placeItemBackInInventory(old, net.minecraft.util.Prediction.SERVER_ONLY);
