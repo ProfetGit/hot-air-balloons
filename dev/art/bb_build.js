@@ -2,15 +2,15 @@
 // HAB, own tab by uuid. Textures are loaded when out/main.png and out/envelope_preview.png exist (paint.lua).
 (function () {
     const fs = require('fs');
-    const dir = '/home/emppu/Projects/Minecraft Datapacks/mods/HotAirBalloons-box/dev/art/';
+    const dir = '/home/emppu/Projects/Minecraft Datapacks/mods/HotAirBalloons/dev/art/';
     const spec = JSON.parse(fs.readFileSync(dir + 'model_spec.json', 'utf8'));
-    window.HABBOX = window.HABBOX || {};
-    const old = ModelProject.all.find(p => p.uuid === window.HABBOX.uuid);
+    window.HAB = window.HAB || {};
+    const old = ModelProject.all.find(p => p.uuid === window.HAB.uuid);
     if (old) { old.select(); old.close(true); }
     newProject(Formats.free);
     Project.name = 'hot_air_balloon';
     Project.box_uv = true;
-    window.HABBOX.uuid = Project.uuid;
+    window.HAB.uuid = Project.uuid;
     const tex = {};
     for (const [atlas, file] of [['main', 'out/main.png'], ['envelope', 'out/envelope_preview.png']]) {
         const [w, h] = spec.atlases[atlas];

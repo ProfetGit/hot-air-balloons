@@ -16,7 +16,7 @@ HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "src/main/resources/assets/hotairballoons/textures/entity/hot_air_balloon_emblem_map.png"
 S = 2
 W, H = 20 * S, 40 * S
-Y_TOP = 160
+Y_TOP = 174
 # (axis, sign): the faces looking along +z, -z, +x, -x. "right" is the viewer's right on that side, as (axis, sign).
 SIDES = [((2, 1), (0, 1)), ((2, -1), (0, -1)), ((0, 1), (2, -1)), ((0, -1), (2, 1))]
 # Horizontal step faces at least this far out carry the emblem too (none on the box's flat main faces).

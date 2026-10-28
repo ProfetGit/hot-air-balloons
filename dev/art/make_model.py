@@ -22,7 +22,10 @@ HEM = 58
 
 # Box envelope prototype (user, 2026-10-28): a bevelled cube instead of the teardrop. Rows are (bottom, top,
 # half-width, bevel), already at full size; the skirt stays scaled.
-BOX = [(70, 74, 34, 6), (74, 78, 42, 4), (78, 162, 46, 4), (162, 166, 42, 4), (166, 170, 34, 6)]
+# Taller than wide, with a stepped funnel down to the skirt so it reads as a balloon, not a floating block (user,
+# 2026-10-28: "box + taper"). Main faces 92..176 are flat for the emblem.
+BOX = [(70, 74, 24, 4), (74, 79, 31, 4), (79, 85, 37, 4), (85, 92, 42, 4), (92, 176, 45, 4), (176, 180, 41, 4),
+       (180, 183, 34, 6)]
 
 
 def boxy(prefix, i, y0, y1, h, b):

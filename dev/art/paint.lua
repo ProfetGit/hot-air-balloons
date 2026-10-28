@@ -2,7 +2,7 @@
 -- model, so gores, weave and coil rings line up across cubes. One layer per material; saves main.aseprite and
 -- envelope.aseprite next to this script and exports the game PNGs.
 -- Run: aseprite --batch --script paint.lua
-local DIR = "/home/emppu/Projects/Minecraft Datapacks/mods/HotAirBalloons-box/"
+local DIR = "/home/emppu/Projects/Minecraft Datapacks/mods/HotAirBalloons/"
 local ART = DIR .. "dev/art/"
 local TEX = DIR .. "src/main/resources/assets/hotairballoons/textures/entity/"
 
@@ -24,9 +24,9 @@ local function shade(c, k)
 end
 
 local GORES = 12
-local TOP, BOTTOM = 170, 70
--- Box envelope: each face is three panels, the middle one a stripe; HALF is the widest half-width.
-local HALF, PANELS = 46, 3
+local TOP, BOTTOM = 183, 70
+-- Box envelope: each face is five 18-unit panels, the 2nd and 4th striped; HALF is the widest half-width.
+local HALF, PANELS = 45, 5
 
 -- Envelope: greyscale (tinted in game). Returns value and whether the texel is in an odd (stripe) gore.
 local function envelope(p, n, fc, h)
