@@ -4,6 +4,7 @@
   "package": "io.github.profetgit.hotairballoons.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "HumanoidMobRendererMixin",
     "MinecraftMixin"
   ],
   "injectors": {

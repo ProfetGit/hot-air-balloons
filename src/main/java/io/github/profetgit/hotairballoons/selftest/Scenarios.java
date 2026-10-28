@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.item.Items;
@@ -31,6 +32,7 @@ import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 final class Scenarios {
     private static final Input NONE = new Input(false, false, false, false, false, false, false);
@@ -57,7 +59,128 @@ final class Scenarios {
             .check("world loaded", mc -> mc.player.isAlive() ? null : "player not alive");
         ride(s);
         weather(s);
+        showcase(s);
         return s;
+    }
+
+    private static @org.jspecify.annotations.Nullable Entity cam;
+    private static int flightTicks;
+
+    /** Client-only side camera 16 blocks off the balloon, moved every tick (old pose kept for smooth interpolation). */
+    private static void chase(Minecraft mc, HotAirBalloon b) {
+        if (cam == null) {
+            cam = net.minecraft.world.entity.EntityTypes.MARKER.create(mc.level, EntitySpawnReason.COMMAND);
+            cam.setPos(b.getX(), b.getY() + 4, b.getZ() + 16);
+            cam.setId(-4242);
+            mc.level.addEntity(cam);
+            mc.setCameraEntity(cam);
+        }
+        cam.xo = cam.getX();
+        cam.yo = cam.getY();
+        cam.zo = cam.getZ();
+        cam.yRotO = cam.getYRot();
+        cam.xRotO = cam.getXRot();
+        double x = b.getX(), y = b.getY() + 4, z = b.getZ() + 16;
+        double dx = b.getX() - x, dy = b.getY() + 5 - y, dz = b.getZ() - z;
+        cam.setPos(x, y, z);
+        cam.setYRot((float) Math.toDegrees(Math.atan2(-dx, dz)));
+        cam.setXRot((float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
+    }
+
+    private static void look(ServerPlayer p, double x, double y, double z, double tx, double ty, double tz) {
+        double dx = tx - x, dy = ty - (y + p.getEyeHeight()), dz = tz - z;
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
+        p.connection.teleport(x, y, z, yaw, pitch);
+    }
+
+    /** M3 looks: inflate after placing, stills from outside and below, a burning climb with thrust (sway), pilot view. */
+    private static void showcase(Script s) {
+        double[] at = new double[3];
+        s.run(mc -> {
+                if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+            })
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                ServerLevel sl = (ServerLevel) p.level();
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set 5000");
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "weather clear");
+                at[0] = Math.floor(p.getX()) + 40.5;
+                at[2] = Math.floor(p.getZ()) + 0.5;
+                at[1] = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(at[0]), (int) Math.floor(at[2]));
+                double y = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(at[0] - 15), (int) Math.floor(at[2]));
+                look(p, at[0] - 15, y, at[2], at[0], at[1] + 5.5, at[2]);
+            })
+            .waitTicks(60)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = ModContent.BALLOON.create(p.level(), EntitySpawnReason.SPAWN_ITEM_USE);
+                b.setInitialPos(at[0], at[1], at[2]);
+                b.setYRot(90);
+                b.startInflating();
+                p.level().addFreshEntity(b);
+                balloonId = b.getUUID();
+            })
+            .capture("inflate", 150)
+            .waitTicks(60)
+            .check("inflates after placing", mc -> {
+                var list = mc.level.getEntitiesOfClass(HotAirBalloon.class, new AABB(at[0] - 2, at[1] - 2, at[2] - 2, at[0] + 2, at[1] + 2, at[2] + 2));
+                return list.size() == 1 && list.getFirst().inflateProgress(0) >= 1 ? null
+                    : list.isEmpty() ? "no balloon" : "progress " + list.getFirst().inflateProgress(0);
+            })
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0] - 10, at[1], at[2] + 10, at[0], at[1] + 5, at[2]))
+            .waitTicks(30)
+            .capture("still_quarter", 1)
+            .waitTicks(5)
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0] - 3, at[1], at[2] - 3, at[0], at[1] + 6, at[2]))
+            .waitTicks(20)
+            .capture("still_below", 1)
+            .waitTicks(5)
+            .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0] - 6, at[1], at[2] + 3, at[0], at[1] + 0.8, at[2]))
+            .waitTicks(20)
+            .capture("still_basket", 1)
+            .waitTicks(5)
+            .server(server -> server.getPlayerList().getPlayers().getFirst().startRiding(serverBalloon(server)))
+            .until("boarded the showcase balloon", 100, mc -> balloon(mc) != null)
+            .run(mc -> {
+                mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                mc.player.setXRot(-12);
+                HotAirBalloonsClient.testInput = BURN;
+            })
+            .waitTicks(60)
+            .capture("still_rider", 1)
+            .waitTicks(40)
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .waitTicks(60)
+            .run(mc -> {
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+                chase(mc, balloon(mc));
+                HotAirBalloonsClient.testInput = BURN_FORWARD;
+            })
+            .capture("flight", 300)
+            .until("flight clip", 200, mc -> {
+                chase(mc, balloon(mc));
+                if (flightTicks++ == 45) HotAirBalloonsClient.testInput = NONE;
+                return !SelfTest.capturing();
+            })
+            .run(mc -> {
+                mc.setCameraEntity(mc.player);
+                cam.discard();
+                cam = null;
+            })
+            .run(mc -> {
+                HotAirBalloonsClient.testInput = NONE;
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+                mc.player.setXRot(-60);
+            })
+            .waitTicks(10)
+            .capture("still_pilot", 1)
+            .waitTicks(5)
+            .run(mc -> {
+                HotAirBalloonsClient.testInput = null;
+                mc.gui.hud.toggle();
+            });
     }
 
     private static HotAirBalloon serverBalloon(MinecraftServer server) {

@@ -4,7 +4,9 @@ import io.github.profetgit.hotairballoons.block.MooringPostBlock;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import io.github.profetgit.hotairballoons.item.BalloonItem;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 import net.minecraft.core.Registry;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -25,8 +27,8 @@ public final class ModContent {
     public static final EntityType<HotAirBalloon> BALLOON = Registry.register(BuiltInRegistries.ENTITY_TYPE, BALLOON_KEY,
         EntityType.Builder.<HotAirBalloon>of(HotAirBalloon::new, MobCategory.MISC)
             .noLootTable()
-            .sized(1.75F, 1.25F)
-            .eyeHeight(1.0F)
+            .sized(1.75F, 1.0F)
+            .eyeHeight(0.9F)
             .clientTrackingRange(12)
             .build(BALLOON_KEY));
 
@@ -41,6 +43,9 @@ public final class ModContent {
     private static final ResourceKey<Item> POST_ITEM_KEY = ResourceKey.create(Registries.ITEM, HotAirBalloons.id("mooring_post"));
     public static final Item MOORING_POST_ITEM = Registry.register(BuiltInRegistries.ITEM, POST_ITEM_KEY,
         new BlockItem(MOORING_POST, new Item.Properties().setId(POST_ITEM_KEY).useBlockDescriptionPrefix()));
+
+    public static final SimpleParticleType WIND_WISP = Registry.register(BuiltInRegistries.PARTICLE_TYPE, HotAirBalloons.id("wind_wisp"),
+        FabricParticleTypes.simple());
 
     private ModContent() {}
 

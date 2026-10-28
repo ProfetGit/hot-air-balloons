@@ -11,3 +11,5 @@ __pycache__/
 dev/icon/out/
 release-art/
 dev/server/.work/
+dev/art/out/
+dev/art/layout.json

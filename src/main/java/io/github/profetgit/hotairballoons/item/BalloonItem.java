@@ -37,6 +37,7 @@ public class BalloonItem extends Item {
         if (!level.noCollision(balloon, balloon.getBoundingBox())) return InteractionResult.FAIL;
         if (level instanceof ServerLevel sl) {
             EntityType.<HotAirBalloon>createDefaultStackConfig(sl, stack, player).apply(balloon);
+            balloon.startInflating();
             level.addFreshEntity(balloon);
             level.gameEvent(player, GameEvent.ENTITY_PLACE, at);
             stack.consume(1, player);

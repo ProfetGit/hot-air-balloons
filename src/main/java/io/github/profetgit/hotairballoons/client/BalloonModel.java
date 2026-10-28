@@ -4,47 +4,67 @@ import io.github.profetgit.hotairballoons.HotAirBalloons;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.geom.PartPose;
-import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
-import net.minecraft.client.model.geom.builders.MeshDefinition;
-import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.util.Mth;
 
 /**
- * Placeholder balloon (M1): basket walls, floor, four ropes, burner, flame and a box envelope. Model space is the
- * renderer's flipped space: -y is up, 16 units per block, origin at the basket floor.
+ * The balloon in three layers from dev/art/balloon.bbmodel ({@link BalloonMesh}): basket + rigging, the emissive
+ * flame, and the envelope (its own texture, tinted). Rigging and envelope share one pose: sway from the frame top and
+ * the inflate scale. Model space is the renderer's flipped space: -y is up, 16 units per block.
  */
 public class BalloonModel extends EntityModel<BalloonRenderState> {
     public static final ModelLayerLocation LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "main");
-    private final ModelPart flame;
+    public static final ModelLayerLocation FLAME_LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "flame");
+    public static final ModelLayerLocation ENVELOPE_LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "envelope");
+    private final Part kind;
+    private final ModelPart a, b;
 
-    public BalloonModel(ModelPart root) {
+    enum Part { MAIN, FLAME, ENVELOPE }
+
+    public BalloonModel(ModelPart root, Part kind) {
         super(root);
-        this.flame = root.getChild("flame");
+        this.kind = kind;
+        this.a = switch (kind) {
+            case MAIN -> root.getChild("rigging");
+            case FLAME -> root.getChild("flame");
+            case ENVELOPE -> root.getChild("envelope");
+        };
+        this.b = kind == Part.FLAME ? root.getChild("pilot") : null;
     }
 
     public static LayerDefinition createLayer() {
-        MeshDefinition mesh = new MeshDefinition();
-        PartDefinition root = mesh.getRoot();
-        root.addOrReplaceChild("envelope", CubeListBuilder.create().texOffs(0, 0).addBox(-36, -136, -36, 72, 80, 72), PartPose.ZERO);
-        root.addOrReplaceChild("wall_n", CubeListBuilder.create().texOffs(300, 0).addBox(-12, -14, -12, 24, 14, 2), PartPose.ZERO);
-        root.addOrReplaceChild("wall_s", CubeListBuilder.create().texOffs(300, 20).addBox(-12, -14, 10, 24, 14, 2), PartPose.ZERO);
-        root.addOrReplaceChild("wall_e", CubeListBuilder.create().texOffs(300, 40).addBox(10, -14, -10, 2, 14, 20), PartPose.ZERO);
-        root.addOrReplaceChild("wall_w", CubeListBuilder.create().texOffs(300, 80).addBox(-12, -14, -10, 2, 14, 20), PartPose.ZERO);
-        root.addOrReplaceChild("floor", CubeListBuilder.create().texOffs(0, 160).addBox(-12, -1, -12, 24, 1, 24), PartPose.ZERO);
-        int[][] corners = {{-11, -11}, {10, -11}, {10, 10}, {-11, 10}};
-        for (int i = 0; i < 4; i++) {
-            root.addOrReplaceChild("rope" + i, CubeListBuilder.create().texOffs(100 + i * 10, 160)
-                .addBox(corners[i][0], -56, corners[i][1], 1, 42, 1), PartPose.ZERO);
-        }
-        root.addOrReplaceChild("burner", CubeListBuilder.create().texOffs(140, 160).addBox(-4, -46, -4, 8, 6, 8), PartPose.ZERO);
-        root.addOrReplaceChild("flame", CubeListBuilder.create().texOffs(180, 160).addBox(-2, -54, -2, 4, 8, 4), PartPose.ZERO);
-        return LayerDefinition.create(mesh, 512, 256);
+        return BalloonMesh.main();
+    }
+
+    public static LayerDefinition createFlameLayer() {
+        return BalloonMesh.flame();
+    }
+
+    public static LayerDefinition createEnvelopeLayer() {
+        return BalloonMesh.envelope();
     }
 
     @Override
     public void setupAnim(BalloonRenderState state) {
         super.setupAnim(state);
-        flame.visible = state.burning;
+        if (kind == Part.FLAME) {
+            float t = state.ageInTicks;
+            float flicker = 1 + 0.08F * Mth.sin(t * 0.9F) * Mth.sin(t * 0.37F + 1) + 0.04F * Mth.sin(t * 1.7F + 2);
+            a.visible = state.flame > 0.02F;
+            a.yScale = state.flame * flicker;
+            a.xScale = a.zScale = (0.75F + 0.25F * state.flame) * (1.0F - 0.3F * (flicker - 1));
+            b.visible = state.flame < 0.3F;
+            return;
+        }
+        a.xRot = state.swayX;
+        a.zRot = state.swayZ;
+        float p = state.inflate;
+        float bump = 0.08F * Mth.sin(Mth.PI * Mth.clamp((p - 0.7F) / 0.3F, 0, 1));
+        a.yScale = Mth.lerp(smooth(p), 0.12F, 1.0F) + bump;
+        a.xScale = a.zScale = Mth.lerp(smooth(Math.min(1, p * 1.25F)), 0.5F, 1.0F) - 0.4F * bump;
+    }
+
+    private static float smooth(float t) {
+        return t * t * (3 - 2 * t);
     }
 }

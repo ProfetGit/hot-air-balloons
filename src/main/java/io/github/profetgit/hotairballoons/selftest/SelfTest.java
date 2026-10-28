@@ -83,6 +83,10 @@ public final class SelfTest {
         }));
     }
 
+    static boolean capturing() {
+        return captureLeft > 0;
+    }
+
     static void startCapture(String name, int frames) {
         captureName = name;
         captureLeft = frames;

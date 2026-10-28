@@ -2,6 +2,7 @@ package io.github.profetgit.hotairballoons.entity;
 
 import io.github.profetgit.hotairballoons.ModContent;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -39,24 +40,36 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
     private static final EntityDataAccessor<Boolean> DATA_BURNER = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DATA_WIND_X = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_WIND_Z = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
+    /** Server ticks left of the inflate animation after placing; never saved, so loaded balloons start inflated. */
+    private static final EntityDataAccessor<Integer> DATA_INFLATE = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
+    public static final int INFLATE_TICKS = 40;
     public static final int MAX_PASSENGERS = 4;
     public static final double CEILING = 320.0;
     /** Rider feet sit this high above the entity origin (the basket floor). */
-    private static final double RIDE_HEIGHT = 0.6;
+    private static final double RIDE_HEIGHT = 0.6 + 2.0 / 16.0;
     private static final double SEAT_OFFSET = 0.42;
-    /** Envelope box relative to the basket floor, matching {@code BalloonModel} (16 model units per block). */
-    public static final double ENVELOPE_HALF = 2.25, ENVELOPE_BOTTOM = 3.5, ENVELOPE_TOP = 8.5;
+    /** Envelope box relative to the basket floor: skirt hem to crown of dev/art/balloon.bbmodel (16 units per block). */
+    public static final double ENVELOPE_HALF = 40 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 157 / 16.0;
     /** Slack rope length before the tether pulls; vanilla's lead snaps at 12. */
     public static final double ROPE = 8.0;
 
     /** Set by the client entry: the local player's keys. Null on a dedicated server. */
     public static @Nullable Supplier<Input> localInput;
+    /** Set by the client entry: per-tick client effects (sounds, wind wisps). */
+    public static @Nullable Consumer<HotAirBalloon> clientTick;
 
     private float heat = BalloonPhysics.NEUTRAL;
     private float yawSpeed;
     private boolean burning;
     private boolean pilotBurner, pilotVent;
     private Leashable.@Nullable LeashData leashData;
+    private int inflateLeft;
+
+    /** Client animation state, advanced once per tick in {@link #animTick}: envelope sway spring, flame, inflation. */
+    public float swayX, swayZ, swayXo, swayZo, flame, flameO;
+    public int inflateTicks = -1;
+    private float swayVX, swayVZ;
+    private double lastX, lastZ, lastVX, lastVZ, accX, accZ;
 
     public HotAirBalloon(EntityType<? extends HotAirBalloon> type, Level level) {
         super(type, level);
@@ -77,6 +90,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         entityData.define(DATA_BURNER, false);
         entityData.define(DATA_WIND_X, 0.0F);
         entityData.define(DATA_WIND_Z, 0.0F);
+        entityData.define(DATA_INFLATE, 0);
     }
 
     @Override
@@ -128,6 +142,27 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
         return level().isClientSide() && !isLocalInstanceAuthoritative() ? entityData.get(DATA_BURNER) : burning;
     }
 
+    /** Server: play the inflate animation, from {@link io.github.profetgit.hotairballoons.item.BalloonItem}. */
+    public void startInflating() {
+        inflateLeft = INFLATE_TICKS;
+        entityData.set(DATA_INFLATE, inflateLeft);
+    }
+
+    /** Client: inflate progress 0..1 at this frame; before the first client tick it comes from the synced counter. */
+    public float inflateProgress(float partialTicks) {
+        if (inflateTicks < 0) return 1 - entityData.get(DATA_INFLATE) / (float) INFLATE_TICKS;
+        return Math.min(1, (inflateTicks + (inflateTicks < INFLATE_TICKS ? partialTicks : 0)) / INFLATE_TICKS);
+    }
+
+    public boolean inflating() {
+        return level().isClientSide() ? inflateTicks >= 0 && inflateTicks < INFLATE_TICKS : inflateLeft > 0;
+    }
+
+    /** Burner flame for looks and sound: the pilot's burner, or the burst that inflates a fresh balloon. */
+    public boolean burnerLit() {
+        return burning() || inflating();
+    }
+
     public Vec3 wind() {
         return new Vec3(entityData.get(DATA_WIND_X), 0, entityData.get(DATA_WIND_Z));
     }
@@ -168,6 +203,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
             double[] w = Wind.at(sl.getSeed(), getY(), sl.getGameTime());
             entityData.set(DATA_WIND_X, (float) w[0]);
             entityData.set(DATA_WIND_Z, (float) w[1]);
+            if (inflateLeft > 0) entityData.set(DATA_INFLATE, --inflateLeft);
         }
 
         if (isLocalInstanceAuthoritative()) {
@@ -178,6 +214,49 @@ public class HotAirBalloon extends VehicleEntity implements Leashable {
             yawSpeed = 0;
         }
         applyEffectsFromBlocks();
+        if (level().isClientSide()) {
+            animTick();
+            if (clientTick != null) clientTick.accept(this);
+        }
+    }
+
+    /**
+     * Envelope sway: a damped spring (period ~1.6 s) leaning the canopy toward the basket's horizontal acceleration,
+     * measured from rendered positions so watchers see it too. Flame level eases toward the burner state.
+     */
+    private void animTick() {
+        if (inflateTicks < 0) inflateTicks = INFLATE_TICKS - entityData.get(DATA_INFLATE);
+        else if (inflateTicks < INFLATE_TICKS) inflateTicks++;
+        double vx = getX() - lastX, vz = getZ() - lastZ;
+        if (tickCount <= 1) vx = vz = 0;
+        accX += (vx - lastVX - accX) * 0.5;
+        accZ += (vz - lastVZ - accZ) * 0.5;
+        lastX = getX();
+        lastZ = getZ();
+        lastVX = vx;
+        lastVZ = vz;
+        float yaw = getYRot() * Mth.DEG_TO_RAD;
+        double fwd = -Mth.sin(yaw) * accX + Mth.cos(yaw) * accZ;
+        double left = Mth.cos(yaw) * accX + Mth.sin(yaw) * accZ;
+        float idle = onGround() ? 0 : 0.012F * Mth.sin(tickCount * 0.05F);
+        float tx = (float) Mth.clamp(fwd * 25, -0.15, 0.15) + idle;
+        float tz = (float) Mth.clamp(left * 25, -0.15, 0.15) + idle * Mth.cos(tickCount * 0.031F);
+        swayXo = swayX;
+        swayZo = swayZ;
+        swayVX += 0.0386F * (tx - swayX) - 0.098F * swayVX;
+        swayVZ += 0.0386F * (tz - swayZ) - 0.098F * swayVZ;
+        swayX += swayVX;
+        swayZ += swayVZ;
+        flameO = flame;
+        float want = burnerLit() ? 0.55F + 0.45F * Mth.clamp((heat() - BalloonPhysics.NEUTRAL) * 2, 0, 1) : 0;
+        flame += (want - flame) * (want > flame ? 0.5F : 0.35F);
+        if (flame < 0.01F && want == 0) flame = 0;
+    }
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(double distance) {
+        double range = 160.0 * getViewScale();
+        return distance < range * range;
     }
 
     private void fly(@Nullable Input in) {
