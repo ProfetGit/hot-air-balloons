@@ -1,0 +1,41 @@
+{
+  "id": "hotairballoons",
+  "user": "Aeronaut",
+  "out_prop": "hotairballoons.selftest",
+  "props": {
+    "hotairballoons.selftest.mode": "{mode}"
+  },
+  "defaults": {
+    "mode": "full"
+  },
+  "fabric_api": true,
+  "width": 1280,
+  "height": 720,
+  "timeout": 900,
+  "options": {
+    "fps": 60,
+    "volume": 0.0,
+    "render_distance": 6
+  },
+  "tiers": {
+    "quick": {
+      "unit": [],
+      "jobs": [
+        { "mc": "26.3", "loader": "fabric" }
+      ]
+    },
+    "full": {
+      "unit": [":26.3-fabric:test"],
+      "jobs": [
+        { "mc": "26.3", "loader": "fabric" }
+      ]
+    },
+    "release": {
+      "unit": [":26.3-fabric:test"],
+      "jobs": [
+        { "mc": "26.3", "loader": "fabric" }
+      ]
+    }
+  },
+  "addons": {}
+}

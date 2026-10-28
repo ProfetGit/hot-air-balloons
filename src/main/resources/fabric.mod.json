@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "hotairballoons",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "${description}",
+  "authors": ["${author}"],
+  "contact": { "homepage": "${homepage}" },
+  "license": "LicenseRef-All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["io.github.profetgit.hotairballoons.HotAirBalloons"],
+    "client": ["io.github.profetgit.hotairballoons.client.HotAirBalloonsClient"]
+  },
+  "mixins": ["hotairballoons.mixins.json"],
+  "depends": {
+    "fabricloader": ">=${fabric_loader}",
+    "fabric-api": "*",
+    "minecraft": "~${mc}",
+    "java": ">=25"
+  }
+}

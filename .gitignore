@@ -1,0 +1,12 @@
+.gradle/
+build/
+versions/*/build/
+versions/*/run/
+versions/*/run-server/
+dist/
+*.hprof
+.idea/
+*.iml
+__pycache__/
+dev/icon/out/
+release-art/
