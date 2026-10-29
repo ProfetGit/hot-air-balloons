@@ -1,10 +1,10 @@
-"""layout.json -> textures/entity/hot_air_balloon_emblem_map.png: where a banner goes on the envelope.
+"""layout.json -> textures/entity/hot_air_balloon_emblem_map.png: the emblem field on each side of the envelope.
 
-Each envelope texel on the outermost face of an emblem side inside the emblem rectangle gets R = banner flag column
-(0..19), G = flag row (0..39), A = 255, oriented to read correctly from outside that side. The client (EmblemTextures)
-turns this map plus a banner pattern texture into a tinted envelope layer, so no vanilla texture ships in the jar.
-The emblem is the banner's 20x40 pixels at 2x2 texels each (40x80 model units, 2.5 x 5 blocks). Box prototype: all
-four sides, on the flat main faces.
+Each envelope texel on the outermost face of a side inside the field (the centre panel between the stripes, see
+paint.lua BOUNDS, over the flat main face) gets R = column from the viewer's left (0..FIELD_W-1), G = row from the
+top (0..FIELD_H-1), A = 255, oriented to read correctly from outside that side, on all four sides. The client
+(EmblemTextures) crops a banner to its design, scales it by a whole number to fill the field and centres it, so the
+logo fits the field whatever the pattern; no vanilla texture ships in the jar.
 """
 import json
 import math
@@ -14,9 +14,9 @@ from PIL import Image
 
 HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "src/main/resources/assets/hotairballoons/textures/entity/hot_air_balloon_emblem_map.png"
-S = 2
-W, H = 20 * S, 40 * S
-Y_TOP = 174
+# The field: x -23..23 (paint.lua BOUNDS centre panel), y 92..176 (the flat main face). Must match EmblemTextures.
+FIELD_X0, FIELD_W = -23, 46
+Y_TOP, FIELD_H = 176, 84
 # (axis, sign): the faces looking along +z, -z, +x, -x. "right" is the viewer's right on that side, as (axis, sign).
 SIDES = [((2, 1), (0, 1)), ((2, -1), (0, -1)), ((0, 1), (2, -1)), ((0, -1), (2, 1))]
 # Horizontal step faces at least this far out carry the emblem too (none on the box's flat main faces).
@@ -56,16 +56,16 @@ def main():
     px = img.load()
     hits = {}
     for (side, c, y), (_, i, j) in best.items():
-        u, v = c + W // 2, Y_TOP - 1 - y
-        if 0 <= u < W and 0 <= v < H:
-            px[i, j] = (u // S, v // S, 0, 255)
+        u, v = c - FIELD_X0, Y_TOP - 1 - y
+        if 0 <= u < FIELD_W and 0 <= v < FIELD_H:
+            px[i, j] = (u, v, 0, 255)
             hits[side] = hits.get(side, 0) + 1
     for side, c, y, i, j in steps:
-        u, v = c + W // 2, Y_TOP - 1 - y
-        if 0 <= u < W and 0 <= v < H and px[i, j][3] == 0:
-            px[i, j] = (u // S, v // S, 0, 255)
+        u, v = c - FIELD_X0, Y_TOP - 1 - y
+        if 0 <= u < FIELD_W and 0 <= v < FIELD_H and px[i, j][3] == 0:
+            px[i, j] = (u, v, 0, 255)
     img.save(OUT)
-    print(f"{OUT.name}: " + ", ".join(f"{s}: {hits.get(s, 0)}" for s, _ in SIDES) + f" of {W * H} texels each")
+    print(f"{OUT.name}: " + ", ".join(f"{s}: {hits.get(s, 0)}" for s, _ in SIDES) + f" of {FIELD_W * FIELD_H} texels each")
 
 
 if __name__ == "__main__":

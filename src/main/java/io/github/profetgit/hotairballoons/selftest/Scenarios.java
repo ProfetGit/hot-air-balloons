@@ -431,12 +431,12 @@ final class Scenarios {
                     && b.look().emblem().layers().size() == 1 && p.getMainHandItem().isEmpty(), b.look() + ", hand " + p.getMainHandItem());
             })
             .waitTicks(5)
-            .check("client draws base, stripes and 2 emblem layers", mc -> {
+            .check("client draws base, stripes and the creeper layer", mc -> {
                 HotAirBalloon b = mc.level.getEntitiesOfClass(HotAirBalloon.class, new AABB(at[0] - 2, at[1] - 2, at[2] - 2, at[0] + 2, at[1] + 2, at[2] + 2)).getFirst();
                 var r = (io.github.profetgit.hotairballoons.client.BalloonRenderer) mc.getEntityRenderDispatcher().getRenderer(b);
                 var st = r.createRenderState();
                 r.extractRenderState(b, st, 0);
-                return st.emblemCount == 2 && st.primary == net.minecraft.world.item.DyeColor.BLACK.getTextureDiffuseColor() ? null
+                return st.emblemCount == 1 && st.primary == net.minecraft.world.item.DyeColor.BLACK.getTextureDiffuseColor() ? null
                     : "emblem layers " + st.emblemCount + ", primary " + Integer.toHexString(st.primary);
             })
             .server(server -> look(server.getPlayerList().getPlayers().getFirst(), at[0], at[1] + 1, at[2] + 14, at[0], at[1] + 7.4, at[2]))

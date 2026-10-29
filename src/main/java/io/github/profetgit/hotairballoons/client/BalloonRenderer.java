@@ -105,12 +105,14 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         state.primary = look.base().getTextureDiffuseColor();
         state.secondary = look.stripes().getTextureDiffuseColor();
         state.emblemCount = 0;
-        if (look.emblemBase().isPresent()) {
-            Identifier base = EmblemTextures.base();
-            if (base != null) add(state, base, look.emblemBase().get().getTextureDiffuseColor());
-            for (BannerPatternLayers.Layer layer : look.emblem().layers()) {
-                Identifier tex = EmblemTextures.pattern(layer.pattern().value().assetId());
-                if (tex != null) add(state, tex, layer.color().getTextureDiffuseColor());
+        if (look.emblemBase().isPresent() && !look.emblem().layers().isEmpty()) {
+            var layers = look.emblem().layers();
+            EmblemTextures.Fit fit = EmblemTextures.fit(layers.stream().map(l -> l.pattern().value().assetId()).toList());
+            if (fit != null) {
+                for (BannerPatternLayers.Layer layer : layers) {
+                    Identifier tex = EmblemTextures.pattern(layer.pattern().value().assetId(), fit);
+                    if (tex != null) add(state, tex, layer.color().getTextureDiffuseColor());
+                }
             }
         }
     }

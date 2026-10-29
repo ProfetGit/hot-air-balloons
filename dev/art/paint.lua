@@ -25,8 +25,9 @@ end
 
 local GORES = 12
 local TOP, BOTTOM = 183, 70
--- Box envelope: each face is five 18-unit panels, the 2nd and 4th striped; HALF is the widest half-width.
-local HALF, PANELS = 45, 5
+-- Box envelope faces, across: base edge, stripe, a wide centre field (where a banner emblem goes, so stripes are never
+-- cut by it), stripe, base edge. Panel k is a stripe when k is odd.
+local BOUNDS = {-45, -37, -23, 23, 37, 45}
 
 -- Envelope: greyscale (tinted in game). Returns value and whether the texel is in an odd (stripe) gore.
 local function envelope(p, n, fc, h)
@@ -36,10 +37,12 @@ local function envelope(p, n, fc, h)
   local along
   if n[3] ~= 0 then along = x elseif n[1] ~= 0 then along = z
   elseif math.abs(z) >= math.abs(x) then along = x else along = z end
-  local width = 2 * HALF / PANELS
-  local g = (along + HALF) / width
-  local k = math.max(0, math.min(PANELS - 1, math.floor(g)))
-  local frac = g - math.floor(g)
+  local k, lo, hi = 0, BOUNDS[1], BOUNDS[2]
+  for i = 1, #BOUNDS - 1 do
+    if along < BOUNDS[i + 1] or i == #BOUNDS - 1 then k, lo, hi = i - 1, BOUNDS[i], BOUNDS[i + 1]; break end
+  end
+  local width = hi - lo
+  local frac = math.max(0, math.min(1, (along - lo) / width))
   local t = math.max(0, math.min(1, (y - BOTTOM) / (TOP - BOTTOM)))
   local L = 196 + 40 * (t * t * (3 - 2 * t))
   L = L + 16 * (1 - (2 * frac - 1) ^ 2) - 8
