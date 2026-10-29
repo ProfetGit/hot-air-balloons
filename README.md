@@ -1,5 +1,10 @@
 ![Hot Air Balloons](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/banner.webp)
 
+<p align="center">
+<a href="https://github.com/ProfetGit"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/buttons/github.webp" alt="GitHub" width="23.96%"></a>
+<a href="https://ko-fi.com/profetgit"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/buttons/kofi.webp" alt="Ko-fi" width="23.96%"></a>
+</p>
+
 **Up, up and away.** Craft a hot air balloon from wool, string and a campfire, light the burner and drift over your world. Climb on the burner, let off heat to sink, steer a little and ride the wind, which blows a different way at every height. Take three friends or a few animals along, strap a chest to the basket, dye the envelope and fly your own banner on it. For Fabric on Minecraft 26.3, needed on the server and on every client.
 
 <p align="center">
@@ -9,7 +14,7 @@
 <img src="https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/clips/colours.webp" alt="Balloons in every dye colour, one with a banner emblem" width="49%">
 </p>
 
-## Features
+![Features](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-features.webp)
 
 - **A real balloon to fly**: the burner heats the envelope and you climb, vent to sink, and it hovers in between. Turn and nudge it along slowly.
 - **Wind at every height**: each layer of sky blows its own way and turns over the days. Pick your height to pick your direction.
@@ -20,7 +25,7 @@
 - **Burner fuel**: coal, charcoal, wood, blaze rods: anything a furnace burns. Carry some and the burner refuels itself.
 - Gentle landings (nobody gets hurt), a soft sway, a roaring flame and wisps that show the wind.
 
-## How to use
+![How to use](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-how-to-use.webp)
 
 Craft a **Hot Air Balloon** (three wool on top, string, a campfire and string in the middle, three wooden slabs below) and use it on the ground to set it up. Click it to climb in.
 
@@ -31,17 +36,17 @@ Craft a **Hot Air Balloon** (three wool on top, string, a campfire and string in
 
 The gauges beside the hotbar show the heat (the white line is hover) and the fuel. Click the balloon with fuel to fill it, with a **dye** to colour the envelope (sneak for the stripes), with a **banner** to make it the emblem, with **shears** to take the emblem off, or with a **chest** to strap one on. Craft a **Mooring Post** (an iron nugget on two logs) and tie the balloon to it with a lead.
 
-## Settings
+![Settings](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-settings.webp)
 
 Open the settings from Mod Menu. You can turn fuel off, change how fast the burner uses it, make the wind stronger or calmer, and stop mobs from climbing in. On a server, the server's `config/hotairballoons.json` decides.
 
-## Installation
+![Installation](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-installation.webp)
 
 Put the jar in the `mods` folder of the server and of every player, with **Fabric API**.
 
 To uninstall, remove the jar. Balloons and mooring posts in the world disappear with it. Settings live in `config/hotairballoons.json`.
 
-## Support
+![Support](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-support.webp)
 
 Hot Air Balloons is free. If it took you somewhere nice, a coffee helps fund the next update.
 
@@ -51,6 +56,8 @@ Want your own server to fly with friends? My BisectHosting affiliate link gives 
 
 [![Get 25% off your first month at BisectHosting](https://raw.githubusercontent.com/ProfetGit/assets/main/bisecthosting-banner.webp)](https://url-shortener.curseforge.com/Pp2BN)
 
-## License
+![License](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-license.webp)
 
 All rights reserved, with permissions: you can use it anywhere, include it in modpacks with credit, and show it in videos. Full terms: [LICENSE](https://github.com/ProfetGit/hot-air-balloons/blob/main/LICENSE).
+
+![](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/divider.webp)

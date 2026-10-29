@@ -11,6 +11,7 @@
     "homepage": "${homepage}"
   },
   "license": "LicenseRef-All-Rights-Reserved",
+  "icon": "assets/hotairballoons/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [

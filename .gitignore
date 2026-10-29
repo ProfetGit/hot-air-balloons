@@ -13,3 +13,8 @@ release-art/
 dev/server/.work/
 dev/art/out/
 dev/art/layout.json
+dev/icon/frames/
+dev/icon/banner_frames/
+dev/icon/preview/
+dev/icon/seam/
+dev/icon/contact.png
