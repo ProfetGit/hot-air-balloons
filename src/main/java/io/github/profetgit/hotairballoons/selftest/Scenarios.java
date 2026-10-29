@@ -66,6 +66,7 @@ final class Scenarios {
         if (only.equals("all") || only.contains("cargo")) cargo(s);
         if (only.equals("all") || only.contains("looks")) looks(s);
         if (only.equals("all") || only.contains("fuel")) fuel(s);
+        if (only.equals("all") || only.contains("walk")) walk(s);
         return s;
     }
 
@@ -255,7 +256,7 @@ final class Scenarios {
             .waitTicks(10)
             .server(server -> {
                 HotAirBalloon b = serverBalloon(server);
-                SelfTest.record("chest takes a seat: 3 aboard", b.getPassengers().size() == 3 && mobs[1].getVehicle() == b && mobs[2].getVehicle() == null
+                SelfTest.record("chest takes a corner: pilot + 3 mobs", b.getPassengers().size() == 4 && mobs[1].getVehicle() == b && mobs[2].getVehicle() == b
                     && mobs[3].getVehicle() == null, "passengers " + b.getPassengers().size() + ", pig " + (mobs[1].getVehicle() == b)
                     + ", chicken " + (mobs[2].getVehicle() == b) + ", rabbit " + (mobs[3].getVehicle() == b));
                 mobs[2].discard();
@@ -612,6 +613,111 @@ final class Scenarios {
             });
     }
 
+    private static HotAirBalloon clientBalloon(Minecraft mc) {
+        return (HotAirBalloon) mc.level.getEntitiesOfClass(HotAirBalloon.class, mc.player.getBoundingBox().inflate(12)).stream()
+            .filter(b -> b.getUUID().equals(balloonId)).findFirst().orElse(null);
+    }
+
+    private static boolean standing(Minecraft mc) {
+        HotAirBalloon b = clientBalloon(mc);
+        return b != null && !mc.player.isPassenger() && io.github.profetgit.hotairballoons.entity.BasketShape.inside(mc.player.position(), b.position(), b.getYRot());
+    }
+
+    /**
+     * Walkable basket: a click takes the controls and the pilot stands on the floor; letting go leaves the player standing
+     * in the basket, carried along while the balloon hovers on its pilot light; the walls hold a walker in; a click from
+     * inside takes the controls again; on the ground a jump clears the rim.
+     */
+    private static void walk(Script s) {
+        double[] y = new double[2];
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                p.setNoGravity(false);
+                p.getInventory().clearContent();
+                p.setHealth(p.getMaxHealth());
+                ServerLevel sl = (ServerLevel) p.level();
+                double x = Math.floor(p.getX()) - 30.5, z = Math.floor(p.getZ()) - 30.5;
+                double gy = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z));
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(x, gy, z);
+                sl.addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
+                balloonId = b.getUUID();
+                p.teleportTo(x + 2.5, gy, z);
+            })
+            .waitTicks(10)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("click takes the controls", p.getVehicle() == b, "vehicle " + p.getVehicle());
+            })
+            .until("at the controls", 100, mc -> balloon(mc) != null)
+            .waitTicks(5)
+            .check("pilot stands on the basket floor", mc -> {
+                double d = mc.player.getY() - (balloon(mc).getY() + io.github.profetgit.hotairballoons.entity.BasketShape.FLOOR_TOP);
+                return Math.abs(d) < 0.02 ? null : String.format("feet %.3f off the floor", d);
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(90)
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .waitTicks(30)
+            .server(server -> server.getPlayerList().getPlayers().getFirst().stopRiding())
+            .waitTicks(20)
+            .check("letting go leaves you standing in the basket", mc -> standing(mc) && mc.player.onGround() ? null
+                : "passenger " + mc.player.isPassenger() + ", inside " + standing(mc) + ", onGround " + mc.player.onGround())
+            .run(mc -> {
+                y[0] = clientBalloon(mc).getY();
+                y[1] = mc.player.getY() - y[0];
+            })
+            .waitTicks(100)
+            .check("crewed balloon keeps its heat and carries you", mc -> {
+                HotAirBalloon b = clientBalloon(mc);
+                double off = mc.player.getY() - b.getY();
+                return standing(mc) && b.getY() > y[0] - 0.5 && Math.abs(off - y[1]) < 0.1 && mc.player.fallDistance < 0.5 ? null
+                    : String.format("inside %s, balloon %.2f -> %.2f, feet offset %.3f -> %.3f, fall %.2f", standing(mc), y[0], b.getY(), y[1], off, mc.player.fallDistance);
+            })
+            .run(mc -> mc.options.keyUp.setDown(true))
+            .waitTicks(30)
+            .run(mc -> mc.options.keyUp.setDown(false))
+            .waitTicks(5)
+            .check("walls hold a walker in", mc -> {
+                HotAirBalloon b = clientBalloon(mc);
+                var l = io.github.profetgit.hotairballoons.entity.BasketShape.toLocal(mc.player.position(), b.position(), b.getYRot());
+                return standing(mc) && Math.abs(l.x) < 0.8 && Math.abs(l.z) < 0.8 ? null : String.format("local %.2f, %.2f, %.2f", l.x, l.y, l.z);
+            })
+            .capture("still_walk", 1)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                b.interact(p, InteractionHand.MAIN_HAND, b.position());
+                SelfTest.record("click inside takes the controls again", p.getVehicle() == b, "vehicle " + p.getVehicle());
+            })
+            .until("back at the controls", 100, mc -> balloon(mc) != null)
+            .run(mc -> HotAirBalloonsClient.testInput = VENT)
+            .until("landing", 1600, mc -> balloon(mc) != null && balloon(mc).onGround())
+            .run(mc -> HotAirBalloonsClient.testInput = null)
+            .server(server -> server.getPlayerList().getPlayers().getFirst().stopRiding())
+            .waitTicks(10)
+            .run(mc -> {
+                mc.options.keyUp.setDown(true);
+                mc.options.keyJump.setDown(true);
+            })
+            .waitTicks(25)
+            .run(mc -> {
+                mc.options.keyUp.setDown(false);
+                mc.options.keyJump.setDown(false);
+            })
+            .waitTicks(20)
+            .check("a jump clears the rim", mc -> {
+                HotAirBalloon b = clientBalloon(mc);
+                double d = Math.hypot(mc.player.getX() - b.getX(), mc.player.getZ() - b.getZ());
+                return !standing(mc) && d > 1.2 ? null : String.format("still inside %s, %.2f from the middle", standing(mc), d);
+            })
+            .server(server -> serverBalloon(server).discard());
+    }
+
     private static HotAirBalloon serverBalloon(MinecraftServer server) {
         return (HotAirBalloon) server.overworld().getEntity(balloonId);
     }
@@ -747,6 +853,7 @@ final class Scenarios {
         } else {
             double[] seen = {Double.MAX_VALUE, -Double.MAX_VALUE};
             boolean[] flame = {false};
+            int[] stood = {0, 0};
             s.until("pilot's balloon in view", 2400, mc -> !mc.level.getEntitiesOfClass(HotAirBalloon.class, mc.player.getBoundingBox().inflate(64)).isEmpty())
                 .until("pilot done", 3600, mc -> {
                     var list = mc.level.getEntitiesOfClass(HotAirBalloon.class, mc.player.getBoundingBox().inflate(96));
@@ -755,12 +862,17 @@ final class Scenarios {
                         seen[0] = Math.min(seen[0], b.getY());
                         seen[1] = Math.max(seen[1], b.getY());
                         flame[0] |= b.burning();
+                        boolean in = io.github.profetgit.hotairballoons.entity.BasketShape.inside(mc.player.position(), b.position(), b.getYRot());
+                        if (in || stood[1] > 0) stood[1]++;
+                        if (in) stood[0]++;
                     }
                     return mc.level.players().stream().noneMatch(p -> p != mc.player)
                         || (seen[1] - seen[0] > 8 && !list.isEmpty() && list.getFirst().onGround() && list.getFirst().getY() < seen[1] - 5);
                 })
                 .check("watcher saw the climb", mc -> seen[1] - seen[0] > 8 ? null : String.format("saw %.2f..%.2f", seen[0], seen[1]))
-                .check("watcher saw the flame", mc -> flame[0] ? null : "never burning");
+                .check("watcher saw the flame", mc -> flame[0] ? null : "never burning")
+                .check("watcher stood in the basket the whole flight", mc -> stood[1] > 200 && stood[0] >= stood[1] - 3 ? null
+                    : "in the basket " + stood[0] + " of " + stood[1] + " ticks");
         }
         return s;
     }

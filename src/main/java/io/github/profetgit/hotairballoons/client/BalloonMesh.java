@@ -41,11 +41,19 @@ final class BalloonMesh {
             .texOffs(208, 156).addBox(-4, -43, -4, 8, 6, 8)
             .texOffs(86, 166).addBox(-2, -45, -2, 4, 2, 4),
             PartPose.offset(0, 0, 0));
+        root.addOrReplaceChild("rope_0", CubeListBuilder.create()
+            .texOffs(102, 166).addBox(-0.5F, -18, -0.5F, 1, 18, 1),
+            PartPose.offset(-11.5F, -40, -11.5F));
+        root.addOrReplaceChild("rope_1", CubeListBuilder.create()
+            .texOffs(106, 167).addBox(-0.5F, -18, -0.5F, 1, 18, 1),
+            PartPose.offset(-11.5F, -40, 11.5F));
+        root.addOrReplaceChild("rope_2", CubeListBuilder.create()
+            .texOffs(110, 167).addBox(-0.5F, -18, -0.5F, 1, 18, 1),
+            PartPose.offset(11.5F, -40, 11.5F));
+        root.addOrReplaceChild("rope_3", CubeListBuilder.create()
+            .texOffs(114, 167).addBox(-0.5F, -18, -0.5F, 1, 18, 1),
+            PartPose.offset(11.5F, -40, -11.5F));
         root.addOrReplaceChild("rigging", CubeListBuilder.create()
-            .texOffs(102, 166).addBox(-12, -18, -12, 1, 18, 1)
-            .texOffs(106, 167).addBox(-12, -18, 11, 1, 18, 1)
-            .texOffs(110, 167).addBox(11, -18, 11, 1, 18, 1)
-            .texOffs(114, 167).addBox(11, -18, -12, 1, 18, 1)
             .texOffs(136, 0).addBox(-13, -24, -13, 26, 6, 26)
             .texOffs(154, 120).addBox(-17, -24, -10, 4, 6, 20)
             .texOffs(202, 120).addBox(13, -24, -10, 4, 6, 20)

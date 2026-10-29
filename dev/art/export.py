@@ -12,7 +12,7 @@ HERE = Path(__file__).parent
 MOD = HERE.parent.parent
 JAVA = MOD / "src/main/java/io/github/profetgit/hotairballoons/client/BalloonMesh.java"
 # Model layer -> (texture atlas, groups). The flame is its own layer because it renders emissive.
-LAYERS = {"main": ("main", ["basket", "rigging"]), "flame": ("main", ["flame", "pilot"]), "envelope": ("envelope", ["envelope"])}
+LAYERS = {"main": ("main", ["basket", "rigging", "rope_0", "rope_1", "rope_2", "rope_3"]), "flame": ("main", ["flame", "pilot"]), "envelope": ("envelope", ["envelope"])}
 
 
 def dims(size):

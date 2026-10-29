@@ -75,8 +75,10 @@ def groups():
         ("valve_0", (-2, 35, -2), (2, 37, 2)), ("lever_0", (2, 35.5, -0.5), (6, 36.5, 0.5)),
         ("coil_0", (-4, 37, -4), (4, 43, 4)), ("nozzle_0", (-2, 43, -2), (2, 45, 2)),
     ]
-    rigging = [(f"rope_{i}", (sx * 11.5 - 0.5, 40, sz * 11.5 - 0.5), (sx * 11.5 + 0.5, 58, sz * 11.5 + 0.5))
-               for i, (sx, sz) in enumerate([(1, -1), (1, 1), (-1, 1), (-1, -1)])]
+    # Each rope is its own group pinned at its frame corner, so the model can stretch it to the swaying skirt.
+    ropes = [(f"rope_{i}", (sx * 11.5, 40, sz * 11.5), [(f"rope_{i}", (sx * 11.5 - 0.5, 40, sz * 11.5 - 0.5), (sx * 11.5 + 0.5, 58, sz * 11.5 + 0.5))])
+             for i, (sx, sz) in enumerate([(1, -1), (1, 1), (-1, 1), (-1, -1)])]
+    rigging = []
     for i, (y0, y1, h) in enumerate(scaled(SKIRT)):
         rigging += rounded("skirt", i, y0, y1, h)
     envelope = []
@@ -85,7 +87,7 @@ def groups():
     flame = [("flame_outer", (-3, 45, -3), (3, 61, 3)), ("flamecore_0", (-1.5, 45, -1.5), (1.5, 55, 1.5))]
     pilot = [("pilot_0", (-1, 45, -1), (1, 47, 1))]
     return [
-        ("basket", (0, 0, 0), basket), ("rigging", (0, 40, 0), rigging), ("envelope", (0, 40, 0), envelope),
+        ("basket", (0, 0, 0), basket), *ropes, ("rigging", (0, 40, 0), rigging), ("envelope", (0, 40, 0), envelope),
         ("flame", (0, 45, 0), flame), ("pilot", (0, 45, 0), pilot),
     ]
 

@@ -45,6 +45,16 @@ final class Script {
         return this;
     }
 
+    /** Runs {@code action} once a tick for {@code n} ticks. */
+    Script each(int n, Consumer<Minecraft> action) {
+        int[] left = {n};
+        steps.add(mc -> {
+            action.accept(mc);
+            return --left[0] <= 0;
+        });
+        return this;
+    }
+
     Script until(String what, int timeout, Predicate<Minecraft> cond) {
         int[] t = {0};
         steps.add(mc -> {

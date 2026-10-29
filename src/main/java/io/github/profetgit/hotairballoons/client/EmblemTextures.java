@@ -25,8 +25,8 @@ import org.jspecify.annotations.Nullable;
 final class EmblemTextures {
     private static final Identifier MAP = HotAirBalloons.id("textures/entity/hot_air_balloon_emblem_map.png");
     /** The envelope's own greyscale textures: the emblem takes their shading so it doesn't show as a flat patch. */
-    private static final Identifier[] SHADING = {HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png"),
-        HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes.png")};
+    private static final Identifier[] SHADING = {HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_framed.png"),
+        HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes_framed.png")};
     /** Flag front in a 64x64 banner pattern texture (vanilla BannerFlagModel: 20x40x1 box at texture offset 0,0). */
     private static final int FLAG_X = 1, FLAG_Y = 1, FLAG_W = 20, FLAG_H = 40;
     /** The field in the map, in texels (emblem_map.py FIELD_W/FIELD_H), and the most a banner pixel is blown up. */

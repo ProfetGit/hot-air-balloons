@@ -25,12 +25,13 @@ end
 
 local GORES = 12
 local TOP, BOTTOM = 183, 70
--- Box envelope faces, across: base edge, stripe, a wide centre field (where a banner emblem goes, so stripes are never
--- cut by it), stripe, base edge. Panel k is a stripe when k is odd.
-local BOUNDS = {-45, -37, -23, 23, 37, 45}
+-- Box envelope faces, across, panel k a stripe when k is odd. PLAIN: five even 18-unit panels (no banner). FRAMED: base
+-- edge, stripe, a wide centre field where a banner emblem goes (so stripes are never cut by it), stripe, base edge.
+local PLAIN = {-45, -27, -9, 9, 27, 45}
+local FRAMED = {-45, -37, -23, 23, 37, 45}
 
 -- Envelope: greyscale (tinted in game). Returns value and whether the texel is in an odd (stripe) gore.
-local function envelope(p, n, fc, h)
+local function envelope(p, n, fc, h, BOUNDS)
   local x, y, z = p[1], p[2], p[3]
   local r = math.sqrt(x * x + z * z)
   -- Panel coordinate along the face: x on the z faces, z on the x faces; top and bottom take the nearer face's.
@@ -275,20 +276,26 @@ flat:saveAs(ART .. "out/main.png")
 
 -- Envelope atlas: base (even gores) and stripes (odd gores), disjoint so the two tinted passes never overlap (the
 -- game batches by render type, so draw order between them is not fixed). Plus a white/red preview for Blockbench.
-local eorder = {"base", "stripes"}
+-- Two pairs: the plain layout and the framed one the renderer switches to when the balloon wears a banner.
+local eorder = {"base", "stripes", "base_framed", "stripes_framed"}
 local espr, eimgs, elayers = sprite("envelope", eorder)
 local ew, eh = layout.atlases.envelope[1], layout.atlases.envelope[2]
 local preview = Image(ew, eh, ColorMode.RGB)
 local A, B = {0xF9, 0xFF, 0xFE}, {0xB0, 0x2E, 0x26}
 each_texel("envelope", function(fc, u, v, p, n, h)
-  local L, odd = envelope(p, n, fc, h)
+  local L, odd = envelope(p, n, fc, h, PLAIN)
   local grey = rgba(L, L, L, 255)
   if odd then eimgs.stripes:drawPixel(u, v, grey) else eimgs.base:drawPixel(u, v, grey) end
   local c = odd and B or A
   preview:drawPixel(u, v, rgba(clamp(L * c[1] / 255), clamp(L * c[2] / 255), clamp(L * c[3] / 255), 255))
+  local Lf, oddf = envelope(p, n, fc, h, FRAMED)
+  local gf = rgba(Lf, Lf, Lf, 255)
+  if oddf then eimgs.stripes_framed:drawPixel(u, v, gf) else eimgs.base_framed:drawPixel(u, v, gf) end
 end)
 finish(espr, eimgs, elayers, eorder, ART .. "envelope.aseprite")
 eimgs.base:saveAs(TEX .. "hot_air_balloon_envelope.png")
 eimgs.stripes:saveAs(TEX .. "hot_air_balloon_envelope_stripes.png")
+eimgs.base_framed:saveAs(TEX .. "hot_air_balloon_envelope_framed.png")
+eimgs.stripes_framed:saveAs(TEX .. "hot_air_balloon_envelope_stripes_framed.png")
 preview:saveAs(ART .. "out/envelope_preview.png")
 print("painted", #layout.faces, "faces")

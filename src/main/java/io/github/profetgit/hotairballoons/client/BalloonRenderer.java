@@ -23,13 +23,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Basket, emissive flame, the envelope drawn twice (base gores in the base dye, stripe gores in the stripe dye), then
+ * Basket, emissive flame, the envelope drawn twice (base panels in the base dye, stripe panels in the stripe dye; even
+ * stripes, or stripes framing a centre field when the balloon wears a banner), then
  * one envelope pass per emblem layer ({@link EmblemTextures}), and the chest in the basket's back corner.
  */
 public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRenderState> {
     private static final Identifier TEXTURE = HotAirBalloons.id("textures/entity/hot_air_balloon.png");
     private static final Identifier ENVELOPE = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope.png");
     private static final Identifier STRIPES = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes.png");
+    /** With a banner: the stripes move out to frame the centre field the emblem fills. */
+    private static final Identifier ENVELOPE_FRAMED = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_framed.png");
+    private static final Identifier STRIPES_FRAMED = HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_stripes_framed.png");
     private static final BlockDisplayContext CHEST_CONTEXT = BlockDisplayContext.create();
     /**
      * In the basket's back corner (seat corner 3; renderer space is the entity's turned 180 degrees), facing the pilot,
@@ -65,8 +69,9 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         poseStack.scale(-1.0F, -1.0F, 1.0F);
         int light = state.lightCoords, overlay = OverlayTexture.NO_OVERLAY;
         collector.submitModel(model, state, poseStack, RenderTypes.entityCutout(TEXTURE), light, overlay, -1, null, state.outlineColor);
-        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(ENVELOPE), light, overlay, state.primary, null, state.outlineColor);
-        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(STRIPES), light, overlay, state.secondary, null, state.outlineColor);
+        boolean framed = state.emblemCount > 0;
+        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? ENVELOPE_FRAMED : ENVELOPE), light, overlay, state.primary, null, state.outlineColor);
+        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? STRIPES_FRAMED : STRIPES), light, overlay, state.secondary, null, state.outlineColor);
         for (int i = 0; i < state.emblemCount; i++) {
             collector.submitModel(envelope, state, poseStack, RenderTypes.entityTranslucent(state.emblemTextures[i]), light, overlay,
                 state.emblemColors[i], null, state.outlineColor);

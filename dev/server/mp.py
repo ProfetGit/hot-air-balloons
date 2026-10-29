@@ -4,7 +4,8 @@
 mp.py [--mc 26.3] [--port 25671]
 
 Pilot joins, the console seats it in a balloon, it burns for 200 ticks (past vanilla's 80-tick vehicle float limit),
-hovers, vents down. Watch joins and must see the climb and the flame. Checks: both clients' results.json, the server
+hovers, vents down. Watch joins, stands in the basket for the whole flight (survival, not riding) and must see the
+climb and the flame without being kicked for floating or corrected for moving wrongly. Checks: both clients' results.json, the server
 never kicked anyone for floating, nobody dropped, the server log is clean.
 Work dir: dev/server/.work/mp-<mc>. Pattern from mods/BeltLantern/dev/server/mp.py.
 """
@@ -135,6 +136,8 @@ def run(mc: str, port: int) -> tuple[bool, list[str]]:
                 time.sleep(3)
                 srv.send("summon hotairballoons:hot_air_balloon 0.5 -60 2.5",
                          "ride Pilot mount @e[type=hotairballoons:hot_air_balloon,limit=1,sort=nearest]")
+                time.sleep(1)
+                srv.send("gamemode survival Watcher", "tp Watcher 0.9 -59.85 2.9")
                 if wait_log(work / "game-pilot/client.log", r"HAB-MP pilot aloft", 240):
                     srv.send("execute as @e[type=hotairballoons:hot_air_balloon,limit=1] run data get entity @s Pos[1]")
                 watch.join(600)
@@ -155,6 +158,9 @@ def run(mc: str, port: int) -> tuple[bool, list[str]]:
     m = re.search(r"has the following entity data: (-?[\d.]+)d", stext)
     notes.append(("PASS " if m and float(m.group(1)) > -52 else "FAIL ") + f"server/balloon_aloft  y={m.group(1) if m else '?'}")
     ok &= bool(m and float(m.group(1)) > -52)
+    wrongly = len(re.findall(r"Watcher moved wrongly", stext))
+    notes.append(("PASS " if wrongly <= 5 else "FAIL ") + f"server/walker_not_corrected  {wrongly} 'moved wrongly'")
+    ok &= wrongly <= 5
     for who, why in re.findall(r"(Pilot|Watcher) lost connection: (.*)", stext):
         if "Disconnected" not in why and "Server closed" not in why:
             ok = False

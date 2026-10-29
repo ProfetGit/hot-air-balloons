@@ -437,11 +437,11 @@
    ]
   },
   {
-   "name": "rigging",
+   "name": "rope_0",
    "pivot": [
-    0,
+    11.5,
     40,
-    0
+    -11.5
    ],
    "atlas": "main",
    "cubes": [
@@ -461,7 +461,18 @@
       102,
       166
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "rope_1",
+   "pivot": [
+    11.5,
+    40,
+    11.5
+   ],
+   "atlas": "main",
+   "cubes": [
     {
      "name": "rope_1",
      "from": [
@@ -478,7 +489,18 @@
       106,
       167
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "rope_2",
+   "pivot": [
+    -11.5,
+    40,
+    11.5
+   ],
+   "atlas": "main",
+   "cubes": [
     {
      "name": "rope_2",
      "from": [
@@ -495,7 +517,18 @@
       110,
       167
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "rope_3",
+   "pivot": [
+    -11.5,
+    40,
+    -11.5
+   ],
+   "atlas": "main",
+   "cubes": [
     {
      "name": "rope_3",
      "from": [
@@ -512,7 +545,18 @@
       114,
       167
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "rigging",
+   "pivot": [
+    0,
+    40,
+    0
+   ],
+   "atlas": "main",
+   "cubes": [
     {
      "name": "skirt_0c",
      "from": [

@@ -177,9 +177,109 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return !isRemoved();
     }
 
+    /** Not as one solid box: the basket is a floor and walls ({@link BasketShape}) that people stand in. */
     @Override
     public boolean canBeCollidedWith(@Nullable Entity other) {
-        return true;
+        return false;
+    }
+
+    /** Set by the client entry: the local player, carried along when standing in a basket. Null on a dedicated server. */
+    public static @Nullable Supplier<Player> localPlayer;
+    private @Nullable List<net.minecraft.world.phys.shapes.VoxelShape> shapes;
+    private @Nullable Vec3 shapesAt;
+    private float shapesYaw;
+    /** Client: the local player stood in this basket last tick (so a floor overlap is lag, not someone underneath). */
+    private boolean localAboard;
+    /** How far into or under the floor someone who was aboard is lifted back onto it (lag between pilot and server). */
+    private static final double RESCUE = 0.8;
+
+    /** This basket's floor and walls where the balloon is now (rebuilt when it has moved or turned). */
+    public List<net.minecraft.world.phys.shapes.VoxelShape> basketShapes() {
+        if (shapes == null || !position().equals(shapesAt) || getYRot() != shapesYaw) {
+            shapesAt = position();
+            shapesYaw = getYRot();
+            shapes = BasketShape.build(shapesAt, shapesYaw);
+        }
+        return shapes;
+    }
+
+    /**
+     * Server: this player is at a balloon basket, by a loose measure: a walker's position comes from their own client,
+     * which sees the balloon smoothed and a few ticks behind, so while it climbs they can report up to half a block
+     * under the server's floor. Used only to spare them vanilla's floating kick.
+     */
+    public static boolean atBasket(Player player) {
+        for (HotAirBalloon b : player.level().getEntitiesOfClass(HotAirBalloon.class, player.getBoundingBox().inflate(4))) {
+            Vec3 l = BasketShape.toLocal(player.position(), b.position(), b.getYRot());
+            if (Math.abs(l.x) < BasketShape.OUTER + 0.5 && Math.abs(l.z) < BasketShape.OUTER + 0.5 && l.y > -3 && l.y < BasketShape.RIM + 1) return true;
+        }
+        return false;
+    }
+
+    /** The balloon whose basket this player stands in, or null. */
+    public static @Nullable HotAirBalloon standingIn(Player player) {
+        for (HotAirBalloon b : player.level().getEntitiesOfClass(HotAirBalloon.class, player.getBoundingBox().inflate(2))) {
+            if (BasketShape.inside(player.position(), b.position(), b.getYRot())) return b;
+        }
+        return null;
+    }
+
+    /** Server: someone stands in the basket without flying it, so it keeps its heat (the pilot light stays on). */
+    private boolean crewed() {
+        for (Player p : level().getEntitiesOfClass(Player.class, getBoundingBox().inflate(1, 1.5, 1))) {
+            if (!p.isPassenger() && BasketShape.inside(p.position(), position(), getYRot())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * What stands in the basket moves and turns with it: after the balloon's own move, everything that stood inside the
+     * basket where it was is put at the same place in the basket where it is now. The local player on the client (its
+     * own movement is the client's), everything but players on the server. Whichever ticks first, the floor and the
+     * people on it end each tick together.
+     */
+    private void carryAboard(Vec3 from, float fromYaw) {
+        float dyaw = getYRot() - fromYaw;
+        if (from.equals(position()) && dyaw == 0) return;
+        List<Entity> aboard = new java.util.ArrayList<>();
+        if (level().isClientSide()) {
+            Player me = localPlayer == null ? null : localPlayer.get();
+            if (me != null && !me.isPassenger()) aboard.add(me);
+        } else {
+            aboard.addAll(level().getEntities(this, new AABB(from, from).inflate(1.2, 1.5, 1.2),
+                e -> !(e instanceof Player) && !e.isPassenger() && !(e instanceof HotAirBalloon)));
+        }
+        for (Entity e : aboard) {
+            if (!BasketShape.inside(e.position(), from, fromYaw)) continue;
+            Vec3 to = BasketShape.toWorld(BasketShape.toLocal(e.position(), from, fromYaw), position(), getYRot());
+            e.setPos(to.x, to.y, to.z);
+            if (dyaw != 0) {
+                e.setYRot(e.getYRot() + dyaw);
+                e.setYHeadRot(e.getYHeadRot() + dyaw);
+            }
+        }
+    }
+
+    /**
+     * Client: if the local player stood in this basket last tick but is now just inside or under its floor (the server
+     * put them by its own, lagging, view of the balloon, or the basket jumped up), stand them back on it: vanilla lets
+     * anything that already overlaps a shape fall through it.
+     */
+    private void keepLocalAboard() {
+        Player me = localPlayer == null ? null : localPlayer.get();
+        if (me == null || me.isPassenger() || me.level() != level()) {
+            localAboard = me != null && me.getVehicle() == this;
+            return;
+        }
+        Vec3 l = BasketShape.toLocal(me.position(), position(), getYRot());
+        boolean over = Math.abs(l.x) < BasketShape.OUTER && Math.abs(l.z) < BasketShape.OUTER;
+        if (localAboard && over && l.y < BasketShape.FLOOR_TOP && l.y > BasketShape.FLOOR_TOP - RESCUE) {
+            Vec3 up = BasketShape.toWorld(new Vec3(l.x, BasketShape.FLOOR_TOP, l.z), position(), getYRot());
+            me.setPos(up.x, up.y, up.z);
+            me.setDeltaMovement(me.getDeltaMovement().x, 0, me.getDeltaMovement().z);
+            me.resetFallDistance();
+        }
+        localAboard = BasketShape.inside(me.position(), position(), getYRot());
     }
 
     @Override
@@ -246,21 +346,26 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     public void tick() {
         if (getHurtTime() > 0) setHurtTime(getHurtTime() - 1);
         if (getDamage() > 0.0F) setDamage(getDamage() - 1.0F);
+        // Where the balloon was at the end of last tick: the level saves it in commonTick, before the client's
+        // interpolation step moves the balloon, so the carry sees interpolated motion as well as our own.
+        Vec3 from = new Vec3(xo, yo, zo);
+        float fromYaw = yRotO;
         super.tick();
 
         Input in = pilotInput();
         boolean piloted = getControllingPassenger() instanceof Player;
         boolean burner = in != null && in.jump();
         boolean vent = in != null && in.sprint();
+        boolean crew = !piloted && !level().isClientSide() && crewed();
         if (!level().isClientSide() || isLocalInstanceAuthoritative()) {
-            boolean lit = piloted && hasFuel();
-            heat = BalloonPhysics.heat(heat, burner && lit, vent, lit || isLeashed());
-            burning = burner && lit;
+            boolean lit = (piloted || crew) && hasFuel();
+            heat = BalloonPhysics.heat(heat, burner && piloted && lit, vent, lit || isLeashed());
+            burning = burner && piloted && lit;
         }
         if (level() instanceof ServerLevel sl) {
             entityData.set(DATA_HEAT, heat);
             entityData.set(DATA_BURNER, burning);
-            useFuel(sl, piloted);
+            useFuel(sl, piloted || crew);
             double[] w = Wind.at(sl.getSeed(), getY(), sl.getGameTime());
             double k = Config.get().wind / 100.0;
             entityData.set(DATA_WIND_X, (float) (w[0] * k));
@@ -276,6 +381,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             yawSpeed = 0;
         }
         applyEffectsFromBlocks();
+        carryAboard(from, fromYaw);
+        if (level().isClientSide()) keepLocalAboard();
         if (!level().isClientSide() && Config.get().mobsBoard && resting()) boardMobs();
         if (level().isClientSide()) {
             animTick();
@@ -368,9 +475,9 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /** Server, on the ground: mobs that walk into the basket climb in, like boats take them (players board by click). */
     private void boardMobs() {
-        if (getPassengers().size() >= seats()) return;
+        if (mobsAboard() >= seats()) return;
         for (Entity e : level().getEntities(this, getBoundingBox().inflate(0.2, -0.01, 0.2), EntitySelector.pushableBy(this))) {
-            if (getPassengers().size() >= seats()) return;
+            if (mobsAboard() >= seats()) return;
             if (e instanceof LivingEntity && !(e instanceof Player) && !e.isPassenger() && !e.hasPassenger(this)
                 && !e.is(EntityTypeTags.CANNOT_BE_PUSHED_ONTO_BOATS) && e.getBbWidth() < MAX_MOB_WIDTH && !(e instanceof Leashable l && l.isLeashed())) {
                 e.startRiding(this);
@@ -386,12 +493,19 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return !level().noCollision(this, getBoundingBox().move(0, -0.1, 0));
     }
 
+    /** One player at the controls (at the burner); mobs in the corners. Other players just stand in the basket. */
     @Override
     protected boolean canAddPassenger(Entity passenger) {
-        return getPassengers().size() < seats();
+        return passenger instanceof Player ? !(getControllingPassenger() instanceof Player) : mobsAboard() < seats();
     }
 
-    /** Four, or three with a chest in the basket. */
+    private int mobsAboard() {
+        int n = 0;
+        for (Entity e : getPassengers()) if (!(e instanceof Player)) n++;
+        return n;
+    }
+
+    /** Corner seats for mobs: four, or three with a chest in the basket. */
     public int seats() {
         return hasChest() ? SEATS_WITH_CHEST.length : MAX_PASSENGERS;
     }
@@ -405,10 +519,14 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     protected Vec3 getPassengerAttachmentPoint(Entity passenger, EntityDimensions dimensions, float scale) {
-        int i = getPassengers().indexOf(passenger);
+        int i = 0;
+        for (Entity e : getPassengers()) {
+            if (e == passenger) break;
+            if (!(e instanceof Player)) i++;
+        }
         int[] order = hasChest() ? SEATS_WITH_CHEST : SEATS;
         double x = 0, z = 0;
-        if ((getPassengers().size() > 1 || hasChest()) && i >= 0 && i < order.length) {
+        if (i < order.length) {
             int c = order[i];
             x = (c == 1 || c == 2) ? SEAT_OFFSET : -SEAT_OFFSET;
             z = (c >= 2) ? -SEAT_OFFSET : SEAT_OFFSET;
@@ -416,17 +534,25 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return new Vec3(x, RIDE_HEIGHT, z).yRot(-getYRot() * Mth.DEG_TO_RAD);
     }
 
+    /** The pilot stands at the burner, feet on the basket floor; mobs sit in the corners. */
     @Override
     protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
-        super.positionRider(passenger, moveFunction);
+        if (passenger instanceof Player) {
+            Vec3 at = BasketShape.toWorld(new Vec3(0, BasketShape.FLOOR_TOP, 0), position(), getYRot());
+            moveFunction.accept(passenger, at.x, at.y, at.z);
+        } else {
+            super.positionRider(passenger, moveFunction);
+        }
         if (passenger.isLocalInstanceAuthoritative()) {
             passenger.setYRot(passenger.getYRot() + yawSpeed);
             passenger.setYHeadRot(passenger.getYHeadRot() + yawSpeed);
         }
     }
 
+    /** Letting go of the controls leaves the pilot standing where they were, in the basket; mobs step out beside it. */
     @Override
     public Vec3 getDismountLocationForPassenger(LivingEntity passenger) {
+        if (passenger instanceof Player) return BasketShape.toWorld(new Vec3(0, BasketShape.FLOOR_TOP + 0.3, 0), position(), getYRot());
         Vec3 out = getCollisionHorizontalEscapeVector(getBbWidth() * Mth.SQRT_OF_TWO, passenger.getBbWidth(), passenger.getYRot());
         Vec3 spot = new Vec3(getX() + out.x, getY(), getZ() + out.z);
         return onGround() ? spot : super.getDismountLocationForPassenger(passenger);
@@ -434,7 +560,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /**
      * Vanilla first (leads, shears, sneak-use while leading mobs ties them to the balloon). Then: a chest in hand adds the
-     * chest; sneak-use or a full basket opens it; anything else boards.
+     * chest; sneak-use opens it; otherwise take the controls if nobody has them, or step into the basket if someone does.
      */
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
@@ -448,7 +574,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             return InteractionResult.SUCCESS_SERVER;
         }
         if (!hasChest() && held.is(Items.CHEST) && !player.isSecondaryUseActive()) {
-            if (getPassengers().size() > SEATS_WITH_CHEST.length) return InteractionResult.PASS;
+            if (mobsAboard() > SEATS_WITH_CHEST.length) return InteractionResult.PASS;
             if (!level().isClientSide()) {
                 setChest(true);
                 held.consume(1, player);
@@ -462,9 +588,13 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             if (open.consumesAction()) gameEvent(GameEvent.CONTAINER_OPEN, player);
             return open;
         }
-        if (player.isSecondaryUseActive()) return InteractionResult.PASS;
-        if (!level().isClientSide()) return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
-        return InteractionResult.SUCCESS;
+        if (player.isSecondaryUseActive() || player.getVehicle() == this) return InteractionResult.PASS;
+        if (level().isClientSide()) return InteractionResult.SUCCESS;
+        if (!(getControllingPassenger() instanceof Player)) return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
+        if (BasketShape.inside(player.position(), position(), getYRot())) return InteractionResult.PASS;
+        Vec3 spot = BasketShape.toWorld(new Vec3(SEAT_OFFSET, BasketShape.FLOOR_TOP + 0.01, SEAT_OFFSET), position(), getYRot());
+        player.teleportTo(spot.x, spot.y, spot.z);
+        return InteractionResult.CONSUME;
     }
 
     /**
@@ -530,7 +660,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return f == UNLIMITED || f > 0;
     }
 
-    /** Server: burn fuel while a pilot is aloft; top up from the pilot or the chest when low. */
+    /** Server: burn fuel while someone is aboard and aloft; top up from the pilot or the chest when low. */
     private void useFuel(ServerLevel sl, boolean piloted) {
         Config c = Config.get();
         if (!c.needsFuel) {
@@ -545,15 +675,16 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             fuelUsed -= whole;
             fuel = Math.max(0, fuel - whole);
         }
-        if (piloted && fuel < REFUEL_AT && getControllingPassenger() instanceof Player pilot) {
+        if (piloted && fuel < REFUEL_AT) {
             entityData.set(DATA_FUEL, fuel);
-            if (!refuelFrom(sl, pilot.getInventory().getNonEquipmentItems(), pilot) && hasChest()) refuelFrom(sl, getItemStacks(), pilot);
+            Player pilot = getControllingPassenger() instanceof Player p ? p : null;
+            if ((pilot == null || !refuelFrom(sl, pilot.getInventory().getNonEquipmentItems(), pilot)) && hasChest()) refuelFrom(sl, getItemStacks(), pilot);
             return;
         }
         entityData.set(DATA_FUEL, fuel);
     }
 
-    private boolean refuelFrom(ServerLevel sl, java.util.List<ItemStack> stacks, Player pilot) {
+    private boolean refuelFrom(ServerLevel sl, java.util.List<ItemStack> stacks, @Nullable Player pilot) {
         for (ItemStack stack : stacks) {
             if (!stack.isEmpty() && burnTime(sl, stack) > 0 && !stack.has(ModContent.ENVELOPE)) {
                 return addFuel(sl, stack, null);

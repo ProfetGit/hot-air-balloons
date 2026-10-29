@@ -38,6 +38,7 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
             spawnWisps(b);
         };
         HotAirBalloon.localInput = HotAirBalloonsClient::keys;
+        HotAirBalloon.localPlayer = () -> Minecraft.getInstance().player;
         ClientTickEvents.END_CLIENT_TICK.register(HotAirBalloonsClient::sendKeys);
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.attachElementAfter(
             net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.HOTBAR, io.github.profetgit.hotairballoons.HotAirBalloons.id("gauges"), BalloonHud::draw);
