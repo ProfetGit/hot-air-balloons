@@ -52,5 +52,183 @@
       ]
     }
   },
-  "addons": {}
+  "addons": {
+    "fa": {
+      "profile": {
+        "26.3": "Fabric 26.3"
+      },
+      "mods": [
+        "entity_model_features-*.jar",
+        "entity_texture_features-*.jar"
+      ],
+      "packs": [
+        "FreshAnimations_*.zip",
+        "FA+Player-*.zip"
+      ]
+    }
+  },
+  "mp": {
+    "properties": {
+      "allow-flight": "false"
+    },
+    "cases": {
+      "flight": {
+        "clients": [
+          {
+            "user": "Pilot",
+            "role": "pilot",
+            "vars": {
+              "mode": "mp-pilot"
+            },
+            "seconds": 270,
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000ba01"
+          },
+          {
+            "user": "Watcher",
+            "role": "watch",
+            "vars": {
+              "mode": "mp-watch"
+            },
+            "seconds": 270,
+            "after": "Pilot joined the game",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000ba02"
+          }
+        ],
+        "steps": [
+          {
+            "wait": "Pilot joined the game",
+            "send": [
+              "gamerule spawn_mobs false",
+              "gamerule spawn_monsters false",
+              "op Pilot",
+              "gamemode survival Pilot",
+              "give Pilot coal 16",
+              "tp Pilot 0.5 -60 0.5 0 0"
+            ]
+          },
+          {
+            "wait": "Watcher joined the game",
+            "send": [
+              "tp Watcher 12.5 -60 0.5 90 -30",
+              "gamemode spectator Watcher"
+            ]
+          },
+          {
+            "client": "pilot",
+            "wait": "HAB-MP pilot ready",
+            "timeout": 240
+          },
+          {
+            "sleep": 3,
+            "send": [
+              "summon hotairballoons:hot_air_balloon 0.5 -60 2.5",
+              "ride Pilot mount @e[type=hotairballoons:hot_air_balloon,limit=1,sort=nearest]"
+            ]
+          },
+          {
+            "sleep": 1,
+            "send": [
+              "gamemode survival Watcher",
+              "tp Watcher 0.9 -59.85 2.9"
+            ]
+          },
+          {
+            "name": "balloon_aloft",
+            "client": "pilot",
+            "wait": "HAB-MP pilot aloft",
+            "timeout": 240,
+            "send": [
+              "execute as @e[type=hotairballoons:hot_air_balloon,limit=1] run data get entity @s Pos[1]"
+            ],
+            "expect": "has the following entity data: (-?[\\d.]+)d",
+            "min": -52
+          }
+        ],
+        "checks": [
+          {
+            "name": "no_float_kick",
+            "absent": "\\w+ was kicked for floating"
+          },
+          {
+            "name": "walker_not_corrected",
+            "count": "Watcher moved wrongly",
+            "max": 5
+          }
+        ]
+      },
+      "playtest": {
+        "clients": [
+          {
+            "user": "Pilot",
+            "role": "pilot",
+            "script": "dev/playtest/mp-pilot.txt",
+            "seconds": 300,
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000ba01"
+          },
+          {
+            "user": "Guest",
+            "role": "guest",
+            "script": "dev/playtest/mp-guest.txt",
+            "seconds": 300,
+            "after": "Pilot joined the game",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000ba02"
+          }
+        ],
+        "steps": [
+          {
+            "wait": "Pilot joined the game",
+            "send": [
+              "gamerule spawn_mobs false",
+              "op Pilot",
+              "gamemode survival Pilot",
+              "give Pilot hotairballoons:hot_air_balloon",
+              "give Pilot coal 16",
+              "tp Pilot 0.5 -60 0.5 0 60"
+            ]
+          },
+          {
+            "wait": "Guest joined the game",
+            "send": [
+              "op Guest",
+              "gamemode survival Guest",
+              "tp Guest 0.5 -60 -1.5 0 21"
+            ]
+          },
+          {
+            "client": "pilot",
+            "wait": "pilot seated",
+            "timeout": 240,
+            "send": [
+              "execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp Guest ~ ~ ~-2 0 21",
+              "tellraw Guest \"BOARDNOW\""
+            ]
+          },
+          {
+            "client": "guest",
+            "wait": "guest aboard",
+            "timeout": 120,
+            "send": [
+              "tellraw Pilot \"CLIMBNOW\""
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "name": "no_float_kick",
+            "absent": "\\w+ was kicked for floating"
+          },
+          {
+            "name": "guest_not_corrected",
+            "count": "Guest moved wrongly",
+            "max": 5
+          },
+          {
+            "name": "pilot_not_corrected",
+            "count": "Pilot moved wrongly",
+            "max": 5
+          }
+        ]
+      }
+    }
+  }
 }

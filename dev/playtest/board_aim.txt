@@ -1,0 +1,177 @@
+# board_aim: can a player click the basket? Place a balloon, then stand at several distances and aim at several heights;
+# `target` is what the crosshair sits on. Then try `use` from the best spot.
+world new flat mode=survival
+cmd give @s hotairballoons:hot_air_balloon
+wait 10
+slot 1
+look 0 60
+wait 8
+state aim_before_place
+use
+wait 8
+state just_placed
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,limit=1] Pos
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,limit=1] Rotation
+shot placed_fp
+wait 60
+# the natural second click: still looking where the item was placed
+state placed_look_down
+
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-1.2 0 0
+wait 12
+lookat ~ ~0.15 ~1.2
+wait 4
+state d1p2_h0p15
+lookat ~ ~0.5 ~1.2
+wait 4
+state d1p2_h0p5
+lookat ~ ~0.9 ~1.2
+wait 4
+state d1p2_h0p9
+lookat ~ ~1.2 ~1.2
+wait 4
+state d1p2_h1p2
+lookat ~ ~2.5 ~1.2
+wait 4
+state d1p2_h2p5
+lookat ~ ~5.0 ~1.2
+wait 4
+state d1p2_h5p0
+lookat ~ ~0.5 ~1.2
+wait 4
+shot d1p2_basket
+lookat ~ ~4 ~1.2
+wait 4
+shot d1p2_envelope
+
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-2.0 0 0
+wait 12
+lookat ~ ~0.15 ~2.0
+wait 4
+state d2p0_h0p15
+lookat ~ ~0.5 ~2.0
+wait 4
+state d2p0_h0p5
+lookat ~ ~0.9 ~2.0
+wait 4
+state d2p0_h0p9
+lookat ~ ~1.2 ~2.0
+wait 4
+state d2p0_h1p2
+lookat ~ ~2.5 ~2.0
+wait 4
+state d2p0_h2p5
+lookat ~ ~5.0 ~2.0
+wait 4
+state d2p0_h5p0
+lookat ~ ~0.5 ~2.0
+wait 4
+shot d2p0_basket
+lookat ~ ~4 ~2.0
+wait 4
+shot d2p0_envelope
+
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-2.8 0 0
+wait 12
+lookat ~ ~0.15 ~2.8
+wait 4
+state d2p8_h0p15
+lookat ~ ~0.5 ~2.8
+wait 4
+state d2p8_h0p5
+lookat ~ ~0.9 ~2.8
+wait 4
+state d2p8_h0p9
+lookat ~ ~1.2 ~2.8
+wait 4
+state d2p8_h1p2
+lookat ~ ~2.5 ~2.8
+wait 4
+state d2p8_h2p5
+lookat ~ ~5.0 ~2.8
+wait 4
+state d2p8_h5p0
+lookat ~ ~0.5 ~2.8
+wait 4
+shot d2p8_basket
+lookat ~ ~4 ~2.8
+wait 4
+shot d2p8_envelope
+
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-3.5 0 0
+wait 12
+lookat ~ ~0.15 ~3.5
+wait 4
+state d3p5_h0p15
+lookat ~ ~0.5 ~3.5
+wait 4
+state d3p5_h0p5
+lookat ~ ~0.9 ~3.5
+wait 4
+state d3p5_h0p9
+lookat ~ ~1.2 ~3.5
+wait 4
+state d3p5_h1p2
+lookat ~ ~2.5 ~3.5
+wait 4
+state d3p5_h2p5
+lookat ~ ~5.0 ~3.5
+wait 4
+state d3p5_h5p0
+lookat ~ ~0.5 ~3.5
+wait 4
+shot d3p5_basket
+lookat ~ ~4 ~3.5
+wait 4
+shot d3p5_envelope
+
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-5.0 0 0
+wait 12
+lookat ~ ~0.15 ~5.0
+wait 4
+state d5p0_h0p15
+lookat ~ ~0.5 ~5.0
+wait 4
+state d5p0_h0p5
+lookat ~ ~0.9 ~5.0
+wait 4
+state d5p0_h0p9
+lookat ~ ~1.2 ~5.0
+wait 4
+state d5p0_h1p2
+lookat ~ ~2.5 ~5.0
+wait 4
+state d5p0_h2p5
+lookat ~ ~5.0 ~5.0
+wait 4
+state d5p0_h5p0
+lookat ~ ~0.5 ~5.0
+wait 4
+shot d5p0_basket
+lookat ~ ~4 ~5.0
+wait 4
+shot d5p0_envelope
+
+# board from 2 blocks, aimed at the basket
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-2 0 0
+wait 12
+lookat ~ ~0.5 ~2
+wait 5
+state before_use_basket
+use
+wait 10
+state after_use_basket
+assert seated vehicle=hotairballoons:hot_air_balloon
+shot after_board
+hold sneak 6
+wait 6
+state after_sneak
+# aimed at the envelope (what a player sees as 'the balloon') from 3 blocks
+cmd execute at @e[type=hotairballoons:hot_air_balloon,limit=1] run tp @s ~ ~ ~-4 0 0
+wait 12
+lookat ~ ~4 ~4
+wait 5
+state before_use_envelope
+use
+wait 10
+state after_use_envelope

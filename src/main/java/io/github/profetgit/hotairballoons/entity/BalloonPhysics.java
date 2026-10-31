@@ -59,6 +59,25 @@ public final class BalloonPhysics {
         return wind + (v - wind) * drag + thrust;
     }
 
+    /**
+     * A balloon on a lead with nobody at the controls floats at the end of it like a captive balloon: its basket floor
+     * {@link #MOOR_HEIGHT} above the anchor, {@link #MOOR_STANDOFF} blocks off to the side it hangs on, leaning a
+     * little (the share {@link #MOOR_WIND}) with the wind, which is what keeps the rope clear of the basket.
+     */
+    public static final double MOOR_HEIGHT = 2.5, MOOR_STANDOFF = 2.2;
+    public static final double MOOR_CLIMB = 0.05, MOOR_GAIN = 0.03, MOOR_WIND = 0.4, MOOR_SPRING = 0.02;
+
+    /** Vertical speed of a moored balloon heading for {@code targetY}: a soft spring, so it eases up and bobs a little. */
+    public static double moorClimb(double vy, double y, double targetY) {
+        double want = clamp((targetY - y) * MOOR_GAIN, -MOOR_CLIMB, MOOR_CLIMB);
+        return vy + (want - vy) * VERTICAL_LAG;
+    }
+
+    /** The air speed a moored balloon settles to on one horizontal axis: the wind's share, pulled back to its spot. */
+    public static double moorWind(double wind, double fromSpot) {
+        return wind * MOOR_WIND - fromSpot * MOOR_SPRING;
+    }
+
     public static final double TETHER_STIFFNESS = 0.04;
     public static final double TETHER_MAX_PULL = 0.3;
 

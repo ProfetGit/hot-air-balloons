@@ -1,0 +1,38 @@
+# creative: a creative player should just be able to place, ride, burn (no coal), pick-block and remove the balloon.
+world new flat mode=creative
+cmd gamerule spawn_mobs false
+cmd time set 1000
+cmd give @s hotairballoons:hot_air_balloon 2
+wait 10
+slot 1
+look 0 60
+wait 8
+state creative_aim
+use
+wait 8
+state creative_placed
+use
+wait 10
+state creative_seated
+hold jump 100
+state creative_burn
+shot creative_aloft
+hold sprint 200
+state creative_vent
+wait 40
+state creative_landed
+hold sneak 6
+wait 10
+state creative_standing
+cmd execute at @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] run tp @s ~ ~ ~-2 0 21
+wait 15
+state creative_before_pick
+press pickitem
+wait 10
+state creative_after_pick
+shot creative_pick
+press attack
+wait 10
+expect_not creative_balloon_removed entity @e[type=hotairballoons:hot_air_balloon,distance=..8]
+state creative_after_attack
+shot creative_removed

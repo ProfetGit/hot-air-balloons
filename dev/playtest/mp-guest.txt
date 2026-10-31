@@ -1,0 +1,32 @@
+# mp-guest: the second player walks up to the pilot's balloon, steps in, and rides along in the basket.
+world wait
+wait 20
+log guest in world
+until chat~BOARDNOW timeout=900
+wait 10
+until target~hot_air_balloon timeout=200
+state guest_before
+shot guest_sees_balloon
+use
+wait 15
+state guest_aboard
+log guest aboard
+shot guest_in_basket
+until y>-55 timeout=900
+state guest_climbing
+shot guest_climb
+wait 80
+state guest_high
+shot guest_high
+camera back
+wait 6
+shot guest_back
+camera first
+until y<-59.5 timeout=1500
+wait 20
+state guest_landed
+shot guest_landed
+hold forward,jump 25
+wait 20
+state guest_out
+end

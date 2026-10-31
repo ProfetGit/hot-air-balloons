@@ -1,0 +1,169 @@
+# under_tree: where does a player put a balloon that is not an open field? Four plots built first (markers), then visited:
+# an oak canopy, a stone wall, a 2-block-high gap under a roof, a pond. The balloon item stacks to 1: one per hotbar slot.
+world new flat mode=survival
+state spawn
+cmd gamerule spawn_mobs false
+cmd time set 1000
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s minecraft:coal 16
+cmd summon minecraft:marker ~10 ~ ~ {Tags:["tree"]}
+cmd summon minecraft:marker ~30 ~ ~ {Tags:["wall"]}
+cmd summon minecraft:marker ~50 ~ ~ {Tags:["gap"]}
+cmd summon minecraft:marker ~70 ~ ~ {Tags:["pond"]}
+cmd execute at @e[type=minecraft:marker,tag=tree,limit=1] run place feature minecraft:oak ~ ~ ~
+cmd execute at @e[type=minecraft:marker,tag=wall,limit=1] run fill ~-5 ~ ~1 ~5 ~12 ~1 minecraft:stone
+cmd execute at @e[type=minecraft:marker,tag=gap,limit=1] run fill ~-5 ~2 ~-5 ~5 ~2 ~5 minecraft:stone
+cmd execute at @e[type=minecraft:marker,tag=pond,limit=1] run fill ~-2 ~-1 ~-2 ~2 ~-1 ~2 minecraft:water
+wait 40
+
+# 1. next to an oak: the basket fits beside the trunk, the envelope sits inside the leaves
+slot 1
+assert holding hand=hotairballoons:hot_air_balloon
+cmd execute at @e[type=minecraft:marker,tag=tree,limit=1] run tp @s ~ ~ ~-2.44 0 60
+wait 20
+state tree_aim
+use
+wait 10
+state tree_placed
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+use
+wait 10
+state tree_seated
+look 0 8 over=5
+wait 8
+shot tree_seated_fp
+camera front
+wait 6
+shot tree_seated_front
+camera first
+clip tree_climb 90
+hold jump 120
+state tree_burn
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+shot tree_burn_fp
+camera front
+wait 6
+shot tree_burn_front
+camera first
+# the next thing a player tries: drive out sideways, away from the trunk
+hold back,jump 120
+state tree_back
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+hold back,jump 120
+state tree_back2
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+hold jump 100
+state tree_burn3
+shot tree_burn3_fp
+camera front
+wait 6
+shot tree_burn3_front
+camera first
+hold sneak 6
+wait 4
+
+# 2. against a stone wall: first too close (the basket would overlap it), then a hand's width further
+slot 2
+cmd execute at @e[type=minecraft:marker,tag=wall,limit=1] run tp @s ~ ~ ~-1.2 0 60
+wait 20
+state wall_close_aim
+use
+wait 10
+state wall_close_after
+expect_not wall_close_placed entity @e[type=hotairballoons:hot_air_balloon,distance=..4]
+shot wall_close
+cmd execute at @e[type=minecraft:marker,tag=wall,limit=1] run tp @s ~ ~ ~-2.0 0 60
+wait 20
+use
+wait 10
+state wall_ok_placed
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+use
+wait 10
+state wall_seated
+look 0 8 over=5
+wait 8
+camera front
+wait 6
+shot wall_ok_front
+camera first
+hold jump 120
+state wall_burn
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+camera front
+wait 6
+shot wall_aloft_front
+camera first
+hold sneak 6
+wait 4
+
+# 3. a 2-block-high gap under a roof
+slot 3
+cmd execute at @e[type=minecraft:marker,tag=gap,limit=1] run tp @s ~ ~ ~-1.0 0 60
+wait 20
+use
+wait 10
+state gap_placed
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+use
+wait 10
+state gap_seated
+look 0 8 over=5
+wait 8
+shot gap_seated_fp
+camera front
+wait 6
+shot gap_seated_front
+camera first
+hold jump 120
+state gap_burn
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+shot gap_burn_fp
+camera front
+wait 6
+shot gap_burn_front
+camera first
+hold jump 100
+state gap_burn2
+hold sneak 6
+wait 10
+state gap_shift
+
+# 4. on water: stand on the shore, aim at the pond
+slot 4
+cmd execute at @e[type=minecraft:marker,tag=pond,limit=1] run tp @s ~ ~ ~-3.2 0 45
+wait 20
+state pond_aim
+use
+wait 10
+state pond_placed
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+use
+wait 10
+state pond_seated
+look 0 8 over=5
+wait 8
+camera front
+wait 6
+shot pond_seated_front
+camera first
+wait 80
+state pond_idle
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+hold jump 120
+state pond_burn
+camera front
+wait 6
+shot pond_aloft_front
+camera first
+hold sprint 200
+state pond_vent
+cmd data get entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] Pos
+hold sprint 160
+state pond_vent2
+camera front
+wait 6
+shot pond_vent2_front

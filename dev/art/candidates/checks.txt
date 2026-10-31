@@ -1,0 +1,81 @@
+# palette.py check, refs: item/oak_boat minecart saddle red_bundle white_bundle lead campfire (no item/red_banner texture exists in 26.3: banners use a special model)
+## OLD icon
+mods/HotAirBalloons/src/main/resources/assets/hotairballoons/textures/item/hot_air_balloon.png
+  colours 16 (limit 36), semi-alpha px 0
+  L* steps: min 0.4 mean 5.2 max 13.3
+  hue shift dark->light +5.8 deg, warm highlights: True (flat_ramp advisory below 0.5 deg)
+  chroma max 68.0 vs refs 76.4 (sat 0.8 vs 1.0); mean dE 3.8 max dE 8.8 over 7 refs (far above 20.0)
+    #5c1612 -> #661212 (red_bundle) dE 5.8
+    #47291a -> #39241b (oak_boat) dE 7.5
+    #8a221c -> #881c1b (red_bundle) dE 2.0
+    #6b4226 -> #815634 (red_bundle) dE 8.8
+    #6e5a40 -> #6f5a38 (oak_boat) dE 4.7
+    #b02e26 -> #b53129 (red_bundle) dE 1.5
+    #7a6b55 -> #7f6f63 (saddle) dE 6.2
+    #8f6a3a -> #917142 (campfire) dE 3.7
+    #d9493b -> #d2382e (red_bundle) dE 5.9
+    #8e8e8e -> #949798 (minecart) dE 3.5
+    #b98e52 -> #b8945f (campfire) dE 5.7
+    #a6957a -> #b09988 (saddle) dE 6.3
+    #d2aa6e -> #c29d62 (campfire) dE 5.2
+    #bdbdbd -> #bcc9c9 (white_bundle) dE 5.8
+    #e2e2e2 -> #e6e6e6 (white_bundle) dE 1.4
+    #fafafa -> #ffffff (white_bundle) dE 1.7
+  flags: none  -> PASS
+exit 0
+## NEW icon_box.png
+mods/HotAirBalloons/dev/art/candidates/item_icon_box/icon_box.png
+  colours 17 (limit 36), semi-alpha px 0
+  L* steps: min 0.4 mean 5.0 max 11.7
+  hue shift dark->light +3.6 deg, warm highlights: True (flat_ramp advisory below 0.5 deg)
+  chroma max 68.0 vs refs 76.4 (sat 0.8 vs 1.0); mean dE 2.8 max dE 8.8 over 7 refs (far above 20.0)
+    #5c1612 -> #661212 (red_bundle) dE 5.8
+    #47291a -> #39241b (oak_boat) dE 7.5
+    #8a221c -> #881c1b (red_bundle) dE 2.0
+    #6b4226 -> #815634 (red_bundle) dE 8.8
+    #6e5a40 -> #6f5a38 (oak_boat) dE 4.7
+    #b02e26 -> #b53129 (red_bundle) dE 1.5
+    #7a6b55 -> #7f6f63 (saddle) dE 6.2
+    #8f6a3a -> #917142 (campfire) dE 3.7
+    #d9493b -> #d2382e (red_bundle) dE 5.9
+    #7f8c8c -> #748585 (white_bundle) dE 3.4
+    #b98e52 -> #b8945f (campfire) dE 5.7
+    #a6957a -> #b09988 (saddle) dE 6.3
+    #b8a88a -> #b09988 (saddle) dE 8.7
+    #d2aa6e -> #c29d62 (campfire) dE 5.2
+    #cbd2d2 -> #cfd6d6 (white_bundle) dE 1.4
+    #e6e9e9 -> #e6e6e6 (white_bundle) dE 1.3
+    #ffffff -> #ffffff (white_bundle) dE 0.0
+  flags: none  -> PASS
+exit 0
+## ALT flame (not rendered in game)
+mods/HotAirBalloons/dev/art/candidates/item_icon_box/alt_flame/icon_box_flame.png
+  colours 19 (limit 36), semi-alpha px 0
+  L* steps: min 0.4 mean 4.5 max 11.3
+  hue shift dark->light +29.7 deg, warm highlights: True (flat_ramp advisory below 0.5 deg)
+  chroma max 72.5 vs refs 76.4 (sat 0.87 vs 1.0); mean dE 2.9 max dE 10.0 over 7 refs (far above 20.0)
+    #5c1612 -> #661212 (red_bundle) dE 5.8
+    #47291a -> #39241b (oak_boat) dE 7.5
+    #8a221c -> #881c1b (red_bundle) dE 2.0
+    #6b4226 -> #815634 (red_bundle) dE 8.8
+    #6e5a40 -> #6f5a38 (oak_boat) dE 4.7
+    #b02e26 -> #b53129 (red_bundle) dE 1.5
+    #7a6b55 -> #7f6f63 (saddle) dE 6.2
+    #8f6a3a -> #917142 (campfire) dE 3.7
+    #d9493b -> #d2382e (red_bundle) dE 5.9
+    #7f8c8c -> #748585 (white_bundle) dE 3.4
+    #e0701c -> #c96c03 (campfire) dE 8.8
+    #b98e52 -> #b8945f (campfire) dE 5.7
+    #a6957a -> #b09988 (saddle) dE 6.3
+    #b8a88a -> #b09988 (saddle) dE 8.7
+    #d2aa6e -> #c29d62 (campfire) dE 5.2
+    #f2a02b -> #dfa21b (campfire) dE 10.0
+    #cbd2d2 -> #cfd6d6 (white_bundle) dE 1.4
+    #e6e9e9 -> #e6e6e6 (white_bundle) dE 1.3
+    #ffffff -> #ffffff (white_bundle) dE 0.0
+  flags: none  -> PASS
+exit 0
+## texel.py on the item model (item/generated, 16x16)
+mods/HotAirBalloons/src/main/resources/assets/hotairballoons/models/item/hot_air_balloon.json
+0 faces, 0 off-density, 0 stretched, 0 unchecked (texture unknown), PASS
+exit 0

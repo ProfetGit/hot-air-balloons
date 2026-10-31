@@ -1,0 +1,50 @@
+# compat: the board + climb scene seen from outside the pilot. Run with --addon fa (Fresh Animations + FA Player) and plain.
+world new flat mode=survival
+cmd gamerule spawn_mobs false
+cmd time set 1000
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s minecraft:coal 16
+slot 1
+assert holding hand=hotairballoons:hot_air_balloon
+look 0 60
+wait 8
+use
+wait 6
+use
+wait 10
+state seated
+look 0 8 over=5
+wait 10
+camera front
+wait 20
+shot seated_front
+camera back
+wait 6
+shot seated_back
+camera front
+wait 4
+clip climb_front 80
+hold jump 100
+state climbing
+shot climbing_front
+camera back
+wait 6
+shot climbing_back
+camera front
+hold forward,jump 50
+shot thrust_front
+hold left,jump 30
+shot turn_front
+wait 30
+shot hover_front
+hold sprint 40
+shot vent_front
+# let go in the basket: standing, walking, jumping with FA
+hold sneak 6
+wait 10
+shot standing_front
+hold forward 12
+shot walking_front
+hold jump 8
+shot jumping_front
+state end

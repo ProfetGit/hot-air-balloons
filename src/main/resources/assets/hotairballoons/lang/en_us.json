@@ -1,7 +1,6 @@
 {
   "item.hotairballoons.hot_air_balloon": "Hot Air Balloon",
   "entity.hotairballoons.hot_air_balloon": "Hot Air Balloon",
-  "block.hotairballoons.mooring_post": "Mooring Post",
   "item.hotairballoons.hot_air_balloon.look": "%s with %s stripes",
   "item.hotairballoons.hot_air_balloon.emblem": "Emblem: %s banner, %s patterns",
   "advancements.hotairballoons.up_up_and_away.title": "Up, Up and Away",

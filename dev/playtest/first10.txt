@@ -1,0 +1,82 @@
+# first10: a survival newcomer. Recipe discoverability, place, board by clicking it, fly, land, get off.
+world new flat mode=survival
+state spawn
+# the recipe unlocks when a campfire shows up in the inventory
+expect_not recipe_unlocked_before entity @s[advancements={hotairballoons:recipes/hot_air_balloon=true}]
+cmd give @s minecraft:campfire
+wait 15
+shot campfire_toast
+expect recipe_unlocked_by_campfire entity @s[advancements={hotairballoons:recipes/hot_air_balloon=true}]
+cmd recipe give @s hotairballoons:hot_air_balloon
+# crafting itself cannot be driven by the script (no GUI clicks); the item is handed over as creative/crafting would
+cmd clear @s minecraft:campfire
+cmd give @s hotairballoons:hot_air_balloon
+wait 10
+slot 1
+assert holding hand=hotairballoons:hot_air_balloon
+look 0 60
+wait 8
+state aiming_to_place
+use
+wait 6
+state just_placed
+shot placed_inflating
+# the natural second click, still looking at the ground where the balloon went: this boards it
+use
+wait 10
+state seated
+look 0 8 over=5
+wait 10
+shot seated_fp
+camera back
+wait 6
+shot seated_back
+look 0 45 over=5
+wait 10
+shot seated_back_lookdown
+look 0 8 over=5
+camera first
+wait 6
+# a newcomer with no coal presses Space (burner)
+hold jump 60
+state burn_no_fuel
+shot burn_no_fuel
+wait 8
+shot burn_no_fuel_b
+# now with coal in the pockets
+cmd give @s minecraft:coal 8
+wait 5
+clip climb 90
+hold jump 120
+state burn_coal
+shot burn_hud
+# W thrust while burning, then A yaw
+hold forward,jump 60
+state thrust
+hold left,jump 40
+state yaw
+# let go of everything: does it hover?
+wait 60
+state hands_off
+shot hands_off_back
+# Sprint = vent: come down
+hold sprint 120
+state vent1
+shot vent_view
+hold sprint 120
+state vent2
+hold sprint 120
+state vent3
+wait 20
+state landed
+shot landed_fp
+# Shift lets go; then step out over the rim
+hold sneak 6
+wait 6
+state after_shift
+hold forward,jump 25
+wait 20
+state stepped_out
+camera back
+wait 4
+shot stepped_out_back

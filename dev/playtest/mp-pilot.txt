@@ -1,0 +1,38 @@
+# mp-pilot: dedicated server; the pilot places, boards and flies with a second player standing in the basket.
+world wait
+wait 20
+log pilot in world
+until hand=hotairballoons:hot_air_balloon timeout=600
+state pilot_has_item
+slot 1
+look 0 60
+wait 20
+state pilot_aim
+use
+wait 50
+state pilot_placed
+shot pilot_placed
+use
+wait 15
+state pilot_seated
+log pilot seated
+until chat~CLIMBNOW timeout=900
+camera back
+wait 10
+state pilot_with_guest
+shot pilot_sees_guest
+clip pilot_climb 120
+hold jump 240
+state pilot_climb
+shot pilot_aloft
+wait 40
+hold sprint 300
+state pilot_vent
+hold sprint 160
+state pilot_landing
+wait 60
+state pilot_landed
+log pilot landed
+hold sneak 6
+wait 80
+end

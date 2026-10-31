@@ -6,9 +6,9 @@ Competition (Modrinth, checked 2026-10-28): **Breezy** 131K downloads, Forge/Neo
 No existing mod in `mods/` registers a custom entity yet; this is the first. Closest template: `mods/CountryRoads` (Fabric 26.3 single target, registers block + block entity + item in `path/Stake.java`, Mod Menu config screen).
 
 ## Decisions (user, 2026-10-28)
-- Flight: **hybrid**. Space = burner (heat up), Sprint key = vent (heat down), A/D yaw, W/S slow thrust; Shift stays vanilla dismount. Height-band wind drifts the balloon gently, shown by wisp particles.
+- Flight: **hybrid**. Space = burner (heat up), Sprint key = vent (heat down), A/D yaw, W/S slow thrust; Shift stays vanilla dismount. Height-band wind drifts the balloon gently, shown by wind lines (balloon-frame trails) and the HUD wind arrow (+ chevron toward a better layer); stronger up high (0.18 b/t at y 224+) and leaned 40% toward a piloted balloon's heading (user 2026-10-29).
 - Getting one: **crafted item**, placed like a boat. (Short inflate animation on placement as polish, not a block-assembly step.)
-- 1.0 features: **dyeable envelope** (16 dyes + banner patterns), **cargo + passengers** (4 seats incl. mobs, attachable chest), **mooring post** block.
+- 1.0 features: **dyeable envelope** (16 dyes + banner patterns), **cargo + passengers** (4 seats incl. mobs, attachable chest), **mooring** (a lead to any vanilla fence).
 - Target: **Fabric 26.3 only** until 1.0 is good; ports later via the Stonecutter pattern (HavingABlast).
 - My defaults (change if wanted): burner needs furnace fuel (right-click burner with fuel, HUD gauge, config `needsFuel`); no fuel = slow sink and soft landing; balloon destroyed mid-air gives riders slow falling.
 
@@ -26,7 +26,7 @@ No existing mod in `mods/` registers a custom entity yet; this is the first. Clo
 - Seats: 4 corner offsets; mobs board like boats; seat count shared.
 - Client: `client/BalloonModel` (LayerDefinition: basket, ropes, burner, envelope panels), `client/BalloonRenderer` with render state; envelope sway as a spring on acceleration; flame flicker; vanilla sounds only (fire/firecharge/blaze), no custom sound files.
 - Envelope colour: base dye + banner pattern layers drawn on the envelope panels from the vanilla banner-pattern atlas.
-- `block/MooringPost` (+ block item): tie the balloon with a vanilla lead (Leashable); tethered balloon hovers in place, no wind drift, no fuel use.
+- Mooring: no custom block (user 2026-10-29); the balloon is Leashable, a lead to any vanilla fence; unpiloted it floats up to 2.5 above the knot, 2.2 to the side, no gusts, no fuel use.
 - Items: envelope, wicker basket, burner → shapeless craft to Hot Air Balloon. Recipes, lang, one advancement.
 - Config + Mod Menu screen, same pattern as `mods/CountryRoads/.../client/ConfigScreen`.
 

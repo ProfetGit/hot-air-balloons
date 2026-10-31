@@ -61,6 +61,14 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private static final EntityDataAccessor<Boolean> DATA_BURNER = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DATA_WIND_X = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_WIND_Z = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
+    /** Height offsets of the wind ladder (the pilot's HUD and the wind lines above and below). */
+    public static final int[] LADDER = {-32, -16, 16, 32};
+    /** Wind (x, z) at each {@link #LADDER} offset, refreshed every tick on the server (gusts change it quickly). */
+    @SuppressWarnings("unchecked")
+    private static final EntityDataAccessor<Float>[] DATA_WIND_LADDER = new EntityDataAccessor[LADDER.length * 2];
+    static {
+        for (int i = 0; i < DATA_WIND_LADDER.length; i++) DATA_WIND_LADDER[i] = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.FLOAT);
+    }
     /** Server ticks left of the inflate animation after placing; never saved, so loaded balloons start inflated. */
     private static final EntityDataAccessor<Integer> DATA_INFLATE = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_CHEST = SynchedEntityData.defineId(HotAirBalloon.class, EntityDataSerializers.BOOLEAN);
@@ -82,8 +90,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     public static final int INFLATE_TICKS = 40;
     public static final int MAX_PASSENGERS = 4;
     public static final double CEILING = 320.0;
-    /** Rider feet sit this high above the entity origin (the basket floor). */
-    private static final double RIDE_HEIGHT = 0.6 + 2.0 / 16.0;
+    /** Rider feet sit this high above the entity origin: on the basket floor. */
+    private static final double RIDE_HEIGHT = BasketShape.FLOOR_TOP;
     private static final double SEAT_OFFSET = 0.42;
     /** Envelope box relative to the basket floor: skirt hem to crown of dev/art/balloon.bbmodel (16 units per block). */
     public static final double ENVELOPE_HALF = 45 / 16.0, ENVELOPE_BOTTOM = 58 / 16.0, ENVELOPE_TOP = 183 / 16.0;
@@ -92,10 +100,15 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /** Set by the client entry: the local player's keys. Null on a dedicated server. */
     public static @Nullable Supplier<Input> localInput;
-    /** Set by the client entry: per-tick client effects (sounds, wind wisps). */
+    /** Set by the client entry: per-tick client effects (sounds, wind lines). */
     public static @Nullable Consumer<HotAirBalloon> clientTick;
 
     private float heat = BalloonPhysics.NEUTRAL;
+    /** Server: how far the wind leans toward the pilot's heading (eases to {@link Wind#FAVOUR} while piloted) and that heading, eased. */
+    private double favourShare;
+    private float favourYaw;
+    /** Server: the side of its anchor a moored balloon hangs on (radians, world x/z), turned slowly toward the wind; NaN = unset. */
+    private double moorDir = Double.NaN;
     private float yawSpeed;
     private boolean burning;
     private boolean pilotBurner, pilotVent;
@@ -131,6 +144,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         entityData.define(DATA_BURNER, false);
         entityData.define(DATA_WIND_X, 0.0F);
         entityData.define(DATA_WIND_Z, 0.0F);
+        for (EntityDataAccessor<Float> a : DATA_WIND_LADDER) entityData.define(a, 0.0F);
         entityData.define(DATA_INFLATE, 0);
         entityData.define(DATA_CHEST, false);
         entityData.define(DATA_LOOK, EnvelopeLook.DEFAULT);
@@ -326,6 +340,21 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return new Vec3(entityData.get(DATA_WIND_X), 0, entityData.get(DATA_WIND_Z));
     }
 
+    /**
+     * Server: this balloon's wind at height y: the world's wind with its gusts (none on a lead, or a gust would pull
+     * past the rope), leaned toward the pilot's heading, scaled by the config.
+     */
+    public double[] windFor(ServerLevel sl, double y) {
+        double[] w = Wind.favour(Wind.at(sl.getSeed(), y, sl.getGameTime(), !isLeashed()), favourYaw, favourShare);
+        double k = Config.get().wind / 100.0;
+        return new double[] {w[0] * k, w[1] * k};
+    }
+
+    /** Wind at {@link #LADDER}[row] blocks above (or below) the balloon, as last synced. */
+    public Vec3 windAt(int row) {
+        return new Vec3(entityData.get(DATA_WIND_LADDER[row * 2]), 0, entityData.get(DATA_WIND_LADDER[row * 2 + 1]));
+    }
+
     /** Server: the pilot's burner/vent keys from {@link io.github.profetgit.hotairballoons.net.BalloonInput}. */
     public void setPilotKeys(boolean burner, boolean vent) {
         pilotBurner = burner;
@@ -366,10 +395,17 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             entityData.set(DATA_HEAT, heat);
             entityData.set(DATA_BURNER, burning);
             useFuel(sl, piloted || crew);
-            double[] w = Wind.at(sl.getSeed(), getY(), sl.getGameTime());
-            double k = Config.get().wind / 100.0;
-            entityData.set(DATA_WIND_X, (float) (w[0] * k));
-            entityData.set(DATA_WIND_Z, (float) (w[1] * k));
+            favourShare = Mth.approach((float) favourShare, piloted ? (float) Wind.FAVOUR : 0.0F, 0.01F);
+            if (favourShare == 0) favourYaw = getYRot();
+            favourYaw += Mth.clamp(Mth.wrapDegrees(getYRot() - favourYaw), -1.5F, 1.5F);
+            double[] w = windFor(sl, getY());
+            entityData.set(DATA_WIND_X, (float) w[0]);
+            entityData.set(DATA_WIND_Z, (float) w[1]);
+            for (int i = 0; i < LADDER.length; i++) {
+                double[] l = windFor(sl, getY() + LADDER[i]);
+                entityData.set(DATA_WIND_LADDER[i * 2], (float) l[0]);
+                entityData.set(DATA_WIND_LADDER[i * 2 + 1], (float) l[1]);
+            }
             if (inflateLeft > 0) entityData.set(DATA_INFLATE, --inflateLeft);
         }
 
@@ -432,7 +468,10 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private void fly(@Nullable Input in) {
         Vec3 v = getDeltaMovement();
         boolean grounded = onGround();
-        double vy = BalloonPhysics.climb(v.y, heat, getY(), CEILING);
+        Entity anchor = getLeashHolder();
+        boolean moored = anchor != null && !(getControllingPassenger() instanceof Player);
+        double vy = moored ? BalloonPhysics.moorClimb(v.y, getY(), anchor.getY() + BalloonPhysics.MOOR_HEIGHT)
+            : BalloonPhysics.climb(v.y, heat, getY(), CEILING);
         if (grounded && vy < 0) vy = 0;
         double vx = v.x, vz = v.z;
         if (in != null) {
@@ -446,9 +485,21 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         setYRot(getYRot() + yawSpeed);
         double drag = grounded ? BalloonPhysics.GROUND_DRAG : BalloonPhysics.AIR_DRAG;
         Vec3 w = grounded ? Vec3.ZERO : wind();
+        if (moored && !grounded) {
+            double wa = Math.atan2(w.z, w.x);
+            if (Double.isNaN(moorDir)) {
+                double ox = getX() - anchor.getX(), oz = getZ() - anchor.getZ();
+                moorDir = ox * ox + oz * oz > 0.25 ? Math.atan2(oz, ox) : w.horizontalDistance() > 0.004 ? wa : Math.toRadians(getYRot() + 90);
+            } else if (w.horizontalDistance() > 0.01) {
+                moorDir += Mth.wrapDegrees((float) Math.toDegrees(wa - moorDir)) * 0.01 * Mth.DEG_TO_RAD;
+            }
+            double sx = anchor.getX() + Math.cos(moorDir) * BalloonPhysics.MOOR_STANDOFF, sz = anchor.getZ() + Math.sin(moorDir) * BalloonPhysics.MOOR_STANDOFF;
+            w = new Vec3(BalloonPhysics.moorWind(w.x, getX() - sx), 0, BalloonPhysics.moorWind(w.z, getZ() - sz));
+        } else if (!moored) {
+            moorDir = Double.NaN;
+        }
         vx = BalloonPhysics.horizontal(vx, w.x, 0, drag);
         vz = BalloonPhysics.horizontal(vz, w.z, 0, drag);
-        Entity anchor = getLeashHolder();
         if (anchor != null) {
             Vec3 d = position().subtract(anchor.position());
             double[] t = BalloonPhysics.tether(d.x, d.y, d.z, vx, vy, vz, ROPE);
@@ -528,25 +579,40 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         double x = 0, z = 0;
         if (i < order.length) {
             int c = order[i];
-            x = (c == 1 || c == 2) ? SEAT_OFFSET : -SEAT_OFFSET;
-            z = (c >= 2) ? -SEAT_OFFSET : SEAT_OFFSET;
+            double off = Math.min(SEAT_OFFSET, Math.max(0.15, BasketShape.INNER - dimensions.width() / 2 - 0.05));
+            x = (c == 1 || c == 2) ? off : -off;
+            z = (c >= 2) ? -off : off;
         }
         return new Vec3(x, RIDE_HEIGHT, z).yRot(-getYRot() * Mth.DEG_TO_RAD);
     }
 
-    /** The pilot stands at the burner, feet on the basket floor; mobs sit in the corners. */
+    /**
+     * The pilot stands at the burner, feet on the basket floor; mobs stand in the corners, feet on the floor too (vanilla
+     * would add the mob's own seated "riding offset", which lifted them half a block into the air).
+     */
     @Override
     protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
         if (passenger instanceof Player) {
             Vec3 at = BasketShape.toWorld(new Vec3(0, BasketShape.FLOOR_TOP, 0), position(), getYRot());
             moveFunction.accept(passenger, at.x, at.y, at.z);
         } else {
-            super.positionRider(passenger, moveFunction);
+            Vec3 at = position().add(getPassengerAttachmentPoint(passenger, passenger.getDimensions(passenger.getPose()), 1.0F));
+            moveFunction.accept(passenger, at.x, at.y, at.z);
+            if (!level().isClientSide()) faceCentre(passenger, at);
         }
         if (passenger.isLocalInstanceAuthoritative()) {
             passenger.setYRot(passenger.getYRot() + yawSpeed);
             passenger.setYHeadRot(passenger.getYHeadRot() + yawSpeed);
         }
+    }
+
+    /** A mob in a corner stands side-on to the wall, looking across the basket, so its rump stays inside the rim. */
+    private void faceCentre(Entity mob, Vec3 at) {
+        Vec3 local = BasketShape.toLocal(at, position(), getYRot());
+        float yaw = getYRot() + (local.x > 0 ? 90F : -90F);
+        mob.setYRot(yaw);
+        mob.setYHeadRot(yaw);
+        if (mob instanceof LivingEntity l) l.yBodyRot = yaw;
     }
 
     /** Letting go of the controls leaves the pilot standing where they were, in the basket; mobs step out beside it. */
@@ -889,6 +955,19 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     @Override
     public Vec3 getLeashOffset() {
-        return new Vec3(0.0, 0.9 * getBbHeight(), 0.0);
+        // The rope is tied to the outside of the rim, on the side facing whoever holds it (vanilla turns this offset
+        // with the balloon, so it is worked out in the basket's own frame).
+        double lx = 0, lz = 1;
+        Entity holder = getLeashHolder();
+        if (holder != null) {
+            Vec3 d = holder.position().subtract(position());
+            Vec3 l = new Vec3(d.x, 0, d.z).yRot(getYRot() * Mth.DEG_TO_RAD);
+            if (l.x * l.x + l.z * l.z > 1e-4) {
+                lx = l.x;
+                lz = l.z;
+            }
+        }
+        double k = (BasketShape.OUTER + 0.02) / Math.max(Math.abs(lx), Math.abs(lz));
+        return new Vec3(lx * k, BasketShape.RIM - 0.1, lz * k);
     }
 }

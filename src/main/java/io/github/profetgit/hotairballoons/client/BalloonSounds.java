@@ -25,6 +25,9 @@ public final class BalloonSounds {
         int passengers;
         int creakIn = 60;
         @Nullable Roar roar;
+        @Nullable Gale gale;
+        double wind;
+        int gustQuiet;
     }
 
     public static void tick(HotAirBalloon b) {
@@ -33,6 +36,7 @@ public final class BalloonSounds {
             State n = new State();
             n.burning = k.burnerLit();
             n.passengers = k.getPassengers().size();
+            n.wind = k.wind().horizontalDistance();
             return n;
         });
         RandomSource rnd = b.getRandom();
@@ -45,6 +49,18 @@ public final class BalloonSounds {
         if (burning && (s.roar == null || s.roar.isStopped())) {
             s.roar = new Roar(b);
             mc.getSoundManager().play(s.roar);
+        }
+
+        double wind = b.onGround() ? 0 : b.wind().horizontalDistance();
+        if (s.gustQuiet > 0) s.gustQuiet--;
+        if (wind > 0.08 && wind - s.wind > 0.04 && s.gustQuiet == 0) {
+            b.level().playLocalSound(b.getX(), b.getY() + 4, b.getZ(), SoundEvents.BREEZE_WHIRL, SoundSource.NEUTRAL, 0.7F, 0.6F, false);
+            s.gustQuiet = 200;
+        }
+        s.wind += (wind - s.wind) * 0.05;
+        if (wind > Gale.FROM && (s.gale == null || s.gale.isStopped())) {
+            s.gale = new Gale(b);
+            mc.getSoundManager().play(s.gale);
         }
 
         int passengers = b.getPassengers().size();
@@ -97,6 +113,48 @@ public final class BalloonSounds {
             float step = MAX / 4.0F;
             volume = Mth.clamp(volume + (balloon.burnerLit() ? step : -step), 0.0F, MAX);
             if (volume <= 0.0F && !balloon.burnerLit()) stop();
+        }
+    }
+
+    /** Rushing air in strong wind (gusts up high), louder with the wind; fades out when it drops. */
+    private static final class Gale extends AbstractTickableSoundInstance {
+        static final double FROM = 0.15, FULL = 0.45;
+        private static final float MAX = 0.5F;
+        private final HotAirBalloon balloon;
+
+        Gale(HotAirBalloon balloon) {
+            super(SoundEvents.ELYTRA_FLYING, SoundSource.NEUTRAL, SoundInstance.createUnseededRandom());
+            this.balloon = balloon;
+            this.looping = true;
+            this.delay = 0;
+            this.volume = 0.0F;
+            this.pitch = 0.6F;
+            place();
+        }
+
+        private void place() {
+            this.x = balloon.getX();
+            this.y = balloon.getY() + 4;
+            this.z = balloon.getZ();
+        }
+
+        @Override
+        public boolean canStartSilent() {
+            return true;
+        }
+
+        @Override
+        public void tick() {
+            if (balloon.isRemoved()) {
+                stop();
+                return;
+            }
+            place();
+            double w = balloon.onGround() ? 0 : balloon.wind().horizontalDistance();
+            float want = MAX * (float) Mth.clamp((w - FROM) / (FULL - FROM), 0.0, 1.0);
+            volume += (want - volume) * 0.05F;
+            pitch = 0.5F + 0.3F * volume / MAX;
+            if (volume < 0.005F && want == 0) stop();
         }
     }
 }

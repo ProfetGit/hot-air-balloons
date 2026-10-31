@@ -17,24 +17,26 @@
 ![Features](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-features.webp)
 
 - **A real balloon to fly**: the burner heats the envelope and you climb, vent to sink, and it hovers in between. Turn and nudge it along slowly.
-- **Wind at every height**: each layer of sky blows its own way and turns over the days. Pick your height to pick your direction.
-- **Four in the basket**: friends, or any animal that walks in while it stands on the ground. Lead a cow under it and it comes along on the rope.
-- **A chest on board**: strap a chest to the basket and open it from inside with your inventory key.
+- **Wind at every height**: each layer of sky blows its own way and turns over the days. The higher you go, the stronger it blows, and it leans your way while you fly, so most heights help you along. Now and then a gust sweeps through a layer and throws you along at two to three times the speed: catch one up high and you really fly. Wind lines show where the air carries you, and the wind arrow by your hotbar turns green when it takes you the way you look, with a little chevron when the air above or below would do it better: pick your height to pick your direction.
+- **Walk around the basket**: friends stand and move around in it while it flies, and can jump out when they want. Animals that walk in while it stands on the ground ride in the corners, and a cow on a lead comes along on the rope.
+- **A chest on board**: put a chest in a corner of the basket and open it with your inventory key while you fly.
 - **Your colours**: dye the envelope and its stripes, and put any banner on it as an emblem. A dyed balloon keeps its look when you pick it up.
-- **Mooring posts**: tie a balloon to a post with a lead and it waits where you left it, even in the air.
+- **Moor it to a fence**: tie a balloon to any fence with a lead and it floats up on its own and hovers at the end of the rope, swaying in the wind, until you climb in.
 - **Burner fuel**: coal, charcoal, wood, blaze rods: anything a furnace burns. Carry some and the burner refuels itself.
-- Gentle landings (nobody gets hurt), a soft sway, a roaring flame and wisps that show the wind.
+- Gentle landings (nobody gets hurt), a soft sway, a roaring flame and wind lines that stream past the basket.
 
 ![How to use](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-how-to-use.webp)
 
-Craft a **Hot Air Balloon** (three wool on top, string, a campfire and string in the middle, three wooden slabs below) and use it on the ground to set it up. Click it to climb in.
+Craft a **Hot Air Balloon** (three wool on top, string, a campfire and string in the middle, three wooden slabs below) and use it on the ground to set it up. Click it to take the controls; you stand at the burner.
 
 - **Jump** (Space): burner, climb
 - **Sprint** (Ctrl): vent, sink
 - **Left/right**: turn; **forward/back**: a slow push
-- **Sneak**: climb out
+- **Sneak**: let go of the controls and walk around the basket; jump over the rim to get out
 
-The gauges beside the hotbar show the heat (the white line is hover) and the fuel. Click the balloon with fuel to fill it, with a **dye** to colour the envelope (sneak for the stripes), with a **banner** to make it the emblem, with **shears** to take the emblem off, or with a **chest** to strap one on. Craft a **Mooring Post** (an iron nugget on two logs) and tie the balloon to it with a lead.
+While someone flies it, others click the balloon to step into the basket, or just jump in.
+
+The gauges beside the hotbar show the heat (the white line is hover) and the fuel. Click the balloon with fuel to fill it, with a **dye** to colour the envelope (sneak for the stripes), with a **banner** to make it the emblem, with **shears** to take the emblem off, or with a **chest** to strap one on. Use a **lead** on the balloon, then on any fence, and the balloon floats up and waits there.
 
 ![Settings](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-settings.webp)
 
@@ -44,7 +46,7 @@ Open the settings from Mod Menu. You can turn fuel off, change how fast the burn
 
 Put the jar in the `mods` folder of the server and of every player, with **Fabric API**.
 
-To uninstall, remove the jar. Balloons and mooring posts in the world disappear with it. Settings live in `config/hotairballoons.json`.
+To uninstall, remove the jar. Balloons in the world disappear with it. Settings live in `config/hotairballoons.json`.
 
 ![Support](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-support.webp)
 

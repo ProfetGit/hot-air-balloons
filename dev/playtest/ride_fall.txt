@@ -1,0 +1,95 @@
+# ride_fall: climb ~20 blocks. 1) vent all the way down, 2) run out of fuel and sink, 3) let go with Shift and step off.
+# Riders must never take the balloon's fall damage (TASTE). events.jsonl has every hurt/chat/actionbar line.
+world new flat mode=survival
+cmd gamerule spawn_mobs false
+cmd time set 1000
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s minecraft:coal 32
+slot 1
+assert holding hand=hotairballoons:hot_air_balloon
+look 0 60
+wait 8
+use
+wait 6
+use
+wait 10
+state start
+assert seated vehicle=hotairballoons:hot_air_balloon
+look 0 8 over=5
+wait 8
+
+# 1) climb, then vent (Sprint) the whole way down
+clip climb 120
+hold jump 120
+state climb_120
+hold jump 120
+state climb_240
+shot high_fp
+camera front
+wait 6
+shot high_front
+camera first
+wait 40
+state hover
+hold sprint 160
+state vent_160
+shot vent_view
+hold sprint 160
+state vent_320
+hold sprint 120
+state vent_440
+wait 30
+state landed_vent
+assert landed_vent_health health=20
+shot landed_vent
+
+# 2) climb again, then no coal and the burner dies: a "hard" landing with nothing helping
+hold jump 240
+state climb2
+cmd clear @s minecraft:coal
+cmd data merge entity @e[type=hotairballoons:hot_air_balloon,sort=nearest,limit=1] {fuel:0}
+wait 5
+state fuel_out_start
+shot fuel_out_high
+wait 100
+state fuel_out_100
+wait 100
+state fuel_out_200
+shot fuel_out_sinking
+until y<-59.8 timeout=600
+wait 20
+state landed_empty
+assert landed_empty_health health=20
+shot landed_empty
+cmd give @s minecraft:coal 16
+wait 5
+
+# 3) climb ~17, Shift, then step off the rim
+hold jump 190
+state climb3
+shot before_shift
+hold sneak 6
+wait 6
+state after_shift
+shot after_shift_fp
+camera front
+wait 6
+shot after_shift_front
+camera first
+look 0 60 over=3
+wait 8
+state regrab_aim
+use
+wait 8
+state regrabbed
+hold sneak 6
+wait 6
+look 0 8 over=3
+wait 60
+state standing_aloft
+hold forward,jump 30
+wait 100
+state after_walk_off
+shot after_walk_off
+wait 40
+state end

@@ -1,0 +1,50 @@
+# Render check for the item icon hotairballoons:hot_air_balloon (item section of ~/.claude/skills/mod-assets/references/render-check.txt).
+# Candidate run as a resource pack:
+#   wb job run --name hab-icon-render -- python3 tools/ModTest/playtest.py HotAirBalloons dev/playtest/render_item_icon.txt --no-build --pack dev/art/candidates/item_icon_box/pack
+# Extras over the template: vanilla boat/minecart/saddle/banner in the hotbar and in item frames beside the balloon.
+# Flat world: ground top at y -61, the player stands at -60.
+world new flat seed=42 mode=creative
+cmd gamerule advance_time false
+cmd gamerule advance_weather false
+cmd time set 6000
+cmd weather clear
+cmd tp @s 0.5 -60 0.5 0 0
+hud off
+camera first
+wait 20
+
+# --- item: hotbar/GUI, first and third person, on the ground, in a frame ---
+cmd clear @s
+cmd give @s minecraft:oak_boat
+cmd give @s minecraft:minecart
+cmd give @s hotairballoons:hot_air_balloon
+cmd give @s minecraft:saddle
+cmd give @s minecraft:red_banner
+slot 3
+cmd tp @s 0.5 -60 0.5 0 0
+hud on
+wait 10
+shot item_hotbar_first_person
+press inventory
+wait 10
+shot item_inventory
+screen close
+hud off
+camera front
+wait 10
+shot item_third_person_front
+camera first
+cmd summon minecraft:item 0.5 -60 3.5 {Item:{id:"hotairballoons:hot_air_balloon",count:1},PickupDelay:32767,NoGravity:1b}
+cmd setblock 2 -59 6 minecraft:stone
+cmd setblock 3 -59 6 minecraft:stone
+cmd setblock 4 -59 6 minecraft:stone
+cmd summon minecraft:item_frame 2.5 -59 5.97 {Facing:2,Fixed:1b,Item:{id:"minecraft:minecart",count:1}}
+cmd summon minecraft:item_frame 3.5 -59 5.97 {Facing:2,Fixed:1b,Item:{id:"hotairballoons:hot_air_balloon",count:1}}
+cmd summon minecraft:item_frame 4.5 -59 5.97 {Facing:2,Fixed:1b,Item:{id:"minecraft:saddle",count:1}}
+lookat 1.5 -59.6 4
+wait 20
+shot item_ground_and_frame
+cmd tp @s 3.5 -60 3.0 0 0
+lookat 3.5 -59 6
+wait 20
+shot item_frame_closeup

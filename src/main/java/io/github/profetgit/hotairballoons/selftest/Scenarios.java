@@ -4,6 +4,8 @@ import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.ModContent;
 import io.github.profetgit.hotairballoons.client.HotAirBalloonsClient;
 import io.github.profetgit.hotairballoons.entity.EnvelopeLook;
+import io.github.profetgit.hotairballoons.entity.BalloonPhysics;
+import io.github.profetgit.hotairballoons.entity.BasketShape;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import java.util.List;
 import java.util.UUID;
@@ -67,6 +69,7 @@ final class Scenarios {
         if (only.equals("all") || only.contains("looks")) looks(s);
         if (only.equals("all") || only.contains("fuel")) fuel(s);
         if (only.equals("all") || only.contains("walk")) walk(s);
+        if (only.equals("all") || only.contains("wind")) wind(s);
         return s;
     }
 
@@ -273,6 +276,12 @@ final class Scenarios {
                 SelfTest.record("chest menu opens", b.createMenu(1, p.getInventory(), p) != null, "");
             })
             .waitTicks(5)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                double sheep = mobs[0].getY() - b.getY(), pig = mobs[1].getY() - b.getY();
+                SelfTest.record("mobs stand on the basket floor", Math.abs(sheep - BasketShape.FLOOR_TOP) < 0.01 && Math.abs(pig - BasketShape.FLOOR_TOP) < 0.01,
+                    String.format("sheep %.3f, pig %.3f above the origin, floor %.3f", sheep, pig, BasketShape.FLOOR_TOP));
+            })
             .check("inventory key opens the chest once it is there", mc -> balloon(mc).hasChest() && mc.gameMode.isServerControlledInventory() ? null
                 : "client chest " + balloon(mc).hasChest())
             .run(mc -> {
@@ -779,13 +788,44 @@ final class Scenarios {
                 BlockPos c = BlockPos.containing(b.getX(), ceiling[0], b.getZ());
                 for (BlockPos q : BlockPos.betweenClosed(c.offset(-6, 0, -6), c.offset(6, 0, 6))) sl.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
                 post[0] = BlockPos.containing(b.getX() + 3, b.getY(), b.getZ());
-                sl.setBlock(post[0], ModContent.MOORING_POST.defaultBlockState(), 3);
+                sl.setBlock(post[0], Blocks.OAK_FENCE.defaultBlockState(), 3);
                 p.stopRiding();
                 p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.LEAD));
                 p.interactOn(b, InteractionHand.MAIN_HAND, b.position());
                 SelfTest.record("lead ties to the balloon", b.getLeashHolder() == p, "holder " + b.getLeashHolder());
                 InteractionResult r = sl.getBlockState(post[0]).useWithoutItem(sl, p, new BlockHitResult(Vec3.atCenterOf(post[0]), Direction.UP, post[0], false));
-                SelfTest.record("post takes the lead", b.getLeashHolder() instanceof LeashFenceKnotEntity, r + ", holder " + b.getLeashHolder());
+                SelfTest.record("a plain fence takes the lead", b.getLeashHolder() instanceof LeashFenceKnotEntity, r + ", holder " + b.getLeashHolder());
+                look(p, b.getX() - 9, b.getY() + 1.5, b.getZ() + 9, b.getX(), b.getY() + 1.4, b.getZ());
+            })
+            .waitTicks(260)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                var knot = b.getLeashHolder();
+                double dh = knot == null ? -1 : Math.hypot(b.getX() - knot.getX(), b.getZ() - knot.getZ());
+                double dy = knot == null ? -99 : b.getY() - knot.getY();
+                SelfTest.record("tied balloon floats up by itself", knot != null && Math.abs(dy - BalloonPhysics.MOOR_HEIGHT) < 0.6 && dh > 1.2 && dh < 3.6,
+                    String.format("%.2f above the knot (want %.1f), %.2f to the side", dy, BalloonPhysics.MOOR_HEIGHT, dh));
+                Vec3 off = b.getLeashOffset();
+                double r = Math.max(Math.abs(off.x), Math.abs(off.z));
+                SelfTest.record("rope is tied to the rim", r > 0.9 && r < 1.0 && off.y > 0.7 && off.y < 1.0, String.valueOf(off));
+            })
+            .capture("still_moored", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                var knot = b.getLeashHolder();
+                p.setNoGravity(true);
+                look(p, b.getX() + 5, b.getY() + 0.9, b.getZ() + 5, (b.getX() + knot.getX()) / 2, b.getY() - 0.8, (b.getZ() + knot.getZ()) / 2);
+            })
+            .waitTicks(10)
+            .capture("still_moored_side", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .server(server -> server.getPlayerList().getPlayers().getFirst().setNoGravity(false))
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                p.teleportTo(b.getX(), b.getY(), b.getZ());
                 p.startRiding(b);
             })
             .until("back aboard", 100, mc -> balloon(mc) != null)
@@ -807,12 +847,17 @@ final class Scenarios {
                 p.teleportTo(post[0].getX() + 2.5, post[0].getY(), post[0].getZ() + 0.5);
                 drift[2] = b.getY();
             })
-            .waitTicks(200)
+            .until("settles on its rope", 1200, mc -> {
+                var sb = serverBalloon(mc.getSingleplayerServer());
+                var knot = sb.getLeashHolder();
+                return knot != null && Math.abs(sb.getY() - knot.getY() - BalloonPhysics.MOOR_HEIGHT) < 0.4 && sb.getDeltaMovement().lengthSqr() < 1e-4;
+            })
             .server(server -> {
                 HotAirBalloon b = serverBalloon(server);
-                double d = b.position().distanceTo(Vec3.atBottomCenterOf(post[0]));
-                SelfTest.record("moored balloon hovers unmanned", b.isLeashed() && Math.abs(b.getY() - drift[2]) < 2 && d < 12,
-                    String.format("leashed %s, y %.2f -> %.2f, %.2f from the post", b.isLeashed(), drift[2], b.getY(), d));
+                var knot = b.getLeashHolder();
+                double dh = knot == null ? -1 : Math.hypot(b.getX() - knot.getX(), b.getZ() - knot.getZ());
+                SelfTest.record("moored balloon hovers unmanned", b.isLeashed() && dh > 1.2 && dh < 3.6,
+                    String.format("leashed %s, %.2f to the side of the knot", b.isLeashed(), dh));
             });
     }
 
@@ -821,6 +866,120 @@ final class Scenarios {
      * 200 ticks (well past the 80-tick float limit), hovers, vents down. "watch": logs what it sees of the pilot's
      * balloon. Both log HAB-MP lines; the harness checks the server side.
      */
+    /** Wind cues: the ladder reaches the client, lines stream downwind past the pilot; HUD stills and a flight capture high up. */
+    private static void wind(Script s) {
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                ServerLevel sl = (ServerLevel) p.level();
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(p.getX() + 6, 216, p.getZ());
+                sl.addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
+                balloonId = b.getUUID();
+                p.teleportTo(b.getX(), b.getY(), b.getZ());
+                p.startRiding(b);
+            })
+            .until("aboard high up", 200, mc -> balloon(mc) != null && balloon(mc).getY() > 200)
+            .run(mc -> {
+                HotAirBalloonsClient.testInput = NONE;
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+            })
+            .waitTicks(80)
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                String bad = null;
+                for (int i = 0; i < HotAirBalloon.LADDER.length && bad == null; i++) {
+                    double[] w = b.windFor(sl, b.getY() + HotAirBalloon.LADDER[i]);
+                    Vec3 got = b.windAt(i);
+                    if (Math.hypot(got.x - w[0], got.z - w[1]) > 1e-4) bad = String.format("row %d: %.4f,%.4f vs %.4f,%.4f", i, got.x, got.z, w[0], w[1]);
+                }
+                SelfTest.record("server ladder is the balloon's wind", bad == null, bad == null ? "ok" : bad);
+            })
+            .check("client gets the wind ladder", mc -> {
+                HotAirBalloon b = balloon(mc), sb = serverBalloon(mc.getSingleplayerServer());
+                for (int i = 0; i < HotAirBalloon.LADDER.length; i++) {
+                    Vec3 w = b.windAt(i), want = sb.windAt(i);
+                    double err = w.subtract(want).horizontalDistance();
+                    if (err > 0.02) return String.format("row %d: %.4f,%.4f vs server %.4f,%.4f", i, w.x, w.z, want.x, want.z);
+                }
+                return null;
+            })
+            .check("wind lines stream downwind", mc -> {
+                HotAirBalloon b = balloon(mc);
+                Vec3 w = b.wind();
+                int n = 0, layers = 0;
+                double cos = 0;
+                for (var l : io.github.profetgit.hotairballoons.client.WindLineParticle.live()) {
+                    if (l.balloon() != b) continue;
+                    if (l.layer() != 0) {
+                        layers++;
+                        continue;
+                    }
+                    Vec3 d = l.delta();
+                    double h = d.horizontalDistance();
+                    if (h < 1e-6) continue;
+                    cos += (d.x * w.x + d.z * w.z) / (h * w.horizontalDistance());
+                    n++;
+                }
+                String what = String.format("%d lines, %d layer lines, mean cos %.2f, wind %.4f/t", n, layers, n == 0 ? 0 : cos / n, w.horizontalDistance());
+                return n >= 4 && layers > 0 && cos / n > 0.9 ? null : what;
+            })
+            .run(mc -> faceWind(mc, Math.PI / 2))
+            .waitTicks(5)
+            .capture("still_wind_across", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .capture("wind_lines", 300)
+            .until("wind lines clip", 400, mc -> !SelfTest.capturing())
+            .capture("wind_turn", 120)
+            .until("turn clip", 200, mc -> {
+                float yaw = mc.player.getYRot();
+                mc.player.yRotO = yaw;
+                mc.player.setYRot(yaw + 0.5F);
+                return !SelfTest.capturing();
+            })
+            .run(mc -> faceWind(mc, 0))
+            .waitTicks(5)
+            .capture("still_wind_ahead", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .run(mc -> {
+                faceWind(mc, Math.PI);
+                mc.player.setXRot(-35);
+                mc.player.xRotO = -35;
+            })
+            .waitTicks(5)
+            .capture("still_wind_up", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .run(mc -> {
+                mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                mc.player.setXRot(20);
+                mc.player.xRotO = 20;
+            })
+            .waitTicks(5)
+            .capture("still_pilot_stands", 1)
+            .until("still taken", 40, mc -> !SelfTest.capturing())
+            .run(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON))
+            .server(server -> {
+                HotAirBalloon b = serverBalloon(server);
+                server.getPlayerList().getPlayers().getFirst().stopRiding();
+                b.discard();
+            })
+            .run(mc -> HotAirBalloonsClient.testInput = null)
+            .waitTicks(10);
+    }
+
+    /** Turns the pilot so the wind blows at {@code rel} radians from straight ahead (positive = to the right). */
+    private static void faceWind(Minecraft mc, double rel) {
+        Vec3 w = balloon(mc).wind();
+        double a = Math.atan2(w.z, w.x) - rel;
+        float yaw = (float) Math.toDegrees(Math.atan2(-Math.cos(a), Math.sin(a)));
+        mc.player.setYRot(yaw);
+        mc.player.yRotO = yaw;
+        mc.player.setXRot(5);
+        mc.player.xRotO = 5;
+    }
+
     static Script multiplayer(String role) {
         Script s = new Script();
         s.until("joined a server", 6000, mc -> mc.player != null && mc.level != null && mc.getSingleplayerServer() == null && mc.gui.screen() == null)
@@ -841,6 +1000,11 @@ final class Scenarios {
                     HotAirBalloonsClient.testInput = NONE;
                 })
                 .waitTicks(100)
+                .check("pilot gets the wind ladder", mc -> {
+                    HotAirBalloon b = balloon(mc);
+                    for (int i = 0; i < HotAirBalloon.LADDER.length; i++) if (b.windAt(i).horizontalDistance() < 1e-4) return "row " + i + " is calm";
+                    return null;
+                })
                 .check("still connected after floating", mc -> mc.getConnection() != null && balloon(mc) != null ? null : "disconnected or dismounted")
                 .run(mc -> HotAirBalloonsClient.testInput = VENT)
                 .until("landing", 1600, mc -> balloon(mc) != null && balloon(mc).onGround())
