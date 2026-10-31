@@ -3,6 +3,10 @@
   "entity.hotairballoons.hot_air_balloon": "Hot Air Balloon",
   "item.hotairballoons.hot_air_balloon.look": "%s with %s stripes",
   "item.hotairballoons.hot_air_balloon.emblem": "Emblem: %s banner, %s patterns",
+  "hotairballoons.hint.controls": "Space: burner (climb). Ctrl: vent (sink). Burner fuel: coal or wood in your inventory.",
+  "hotairballoons.hint.no_fuel": "Out of fuel. Carry coal or wood, or click the balloon with some.",
+  "hotairballoons.hint.blocked": "Something is above the basket.",
+  "hotairballoons.hint.no_room": "No room: a balloon needs about three free blocks around it.",
   "advancements.hotairballoons.up_up_and_away.title": "Up, Up and Away",
   "advancements.hotairballoons.up_up_and_away.description": "Fly a hot air balloon above height 200"
 }

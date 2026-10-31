@@ -69,6 +69,7 @@ final class Scenarios {
         if (only.equals("all") || only.contains("looks")) looks(s);
         if (only.equals("all") || only.contains("fuel")) fuel(s);
         if (only.equals("all") || only.contains("walk")) walk(s);
+        if (only.equals("all") || only.contains("roof")) roof(s);
         if (only.equals("all") || only.contains("wind")) wind(s);
         return s;
     }
@@ -545,6 +546,63 @@ final class Scenarios {
      * clicking with coal refuels; the recipe exists; flying above 200 gives the advancement; with fuel turned off in the
      * config the burner works on an empty tank.
      */
+    /** A low roof stops the climb before the pilot's head enters it; a creative pilot needs no fuel. */
+    private static void roof(Script s) {
+        double[] at = new double[2];
+        s.server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.stopRiding();
+                p.setNoGravity(false);
+                p.getInventory().clearContent();
+                p.setHealth(p.getMaxHealth());
+                ServerLevel sl = (ServerLevel) p.level();
+                double x = Math.floor(p.getX()) + 60.5, z = Math.floor(p.getZ()) + 60.5;
+                int y = sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z));
+                BlockPos c = BlockPos.containing(x, y + 2, z);
+                for (BlockPos q : BlockPos.betweenClosed(c.offset(-6, 0, -6), c.offset(6, 0, 6))) sl.setBlock(q, Blocks.STONE.defaultBlockState(), 3);
+                HotAirBalloon b = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
+                b.setInitialPos(x, y, z);
+                sl.addFreshEntity(b);
+                b.setFuel(HotAirBalloon.MAX_FUEL);
+                balloonId = b.getUUID();
+                p.teleportTo(x, y, z);
+                p.startRiding(b);
+                at[0] = y;
+            })
+            .until("aboard the roofed balloon", 100, mc -> balloon(mc) != null)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(120)
+            .check("climb stops under a low roof", mc -> {
+                double dy = balloon(mc).getY() - at[0];
+                return dy < 0.3 ? null : String.format("balloon rose %.2f", dy);
+            })
+            .check("pilot's head stays out of the roof", mc -> mc.player.getHealth() >= mc.player.getMaxHealth() - 0.01F && !mc.player.isInWall() ? null
+                : "health " + mc.player.getHealth() + ", inWall " + mc.player.isInWall())
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                HotAirBalloon b = serverBalloon(server);
+                ServerLevel sl = (ServerLevel) b.level();
+                BlockPos c = BlockPos.containing(b.getX(), at[0] + 2, b.getZ());
+                for (BlockPos q : BlockPos.betweenClosed(c.offset(-6, 0, -6), c.offset(6, 0, 6))) sl.setBlock(q, Blocks.AIR.defaultBlockState(), 3);
+                p.getInventory().clearContent();
+                p.setGameMode(GameType.CREATIVE);
+                b.setFuel(0);
+            })
+            .waitTicks(10)
+            .run(mc -> HotAirBalloonsClient.testInput = BURN)
+            .waitTicks(120)
+            .check("creative pilot climbs with an empty tank", mc -> balloon(mc).getY() > at[0] + 3 ? null : "y " + balloon(mc).getY())
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> {
+                ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
+                p.setGameMode(GameType.SURVIVAL);
+            })
+            .waitTicks(10)
+            .run(mc -> HotAirBalloonsClient.testInput = NONE)
+            .server(server -> SelfTest.record("tank kept for survival", serverBalloon(server).fuel() == 0, "fuel " + serverBalloon(server).fuel()));
+    }
+
     private static void fuel(Script s) {
         double[] at = new double[2];
         s.server(server -> {

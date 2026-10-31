@@ -34,7 +34,10 @@ public class BalloonItem extends Item {
         Vec3 at = bhit.getLocation();
         balloon.setInitialPos(at.x, at.y, at.z);
         balloon.setYRot(player.getYRot());
-        if (!level.noCollision(balloon, balloon.getBoundingBox())) return InteractionResult.FAIL;
+        if (!level.noCollision(balloon, balloon.getBoundingBox())) {
+            player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("hotairballoons.hint.no_room"));
+            return InteractionResult.FAIL;
+        }
         if (level instanceof ServerLevel sl) {
             EntityType.<HotAirBalloon>createDefaultStackConfig(sl, stack, player).apply(balloon);
             balloon.setLook(stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT));

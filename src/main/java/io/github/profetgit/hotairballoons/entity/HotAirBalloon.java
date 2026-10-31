@@ -115,6 +115,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     private Leashable.@Nullable LeashData leashData;
     private int inflateLeft;
     private float fuelUsed;
+    private int lastBlockedHint = -1000, lastFuelHint = -1000, savedFuel;
+    private static final java.util.Set<java.util.UUID> HINTED = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private NonNullList<ItemStack> itemStacks = NonNullList.withSize(CHEST_SIZE, ItemStack.EMPTY);
     private @Nullable ResourceKey<LootTable> lootTable;
     private long lootTableSeed;
@@ -507,6 +509,14 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
             vy = t[1];
             vz = t[2];
         }
+        if (vy > 0 && getControllingPassenger() instanceof Player pilot && !level().noCollision(null, pilot.getBoundingBox().deflate(0.01, 0, 0.01).move(0, vy + 0.05, 0))) {
+            vy = 0;
+            heat = Math.min(heat, BalloonPhysics.NEUTRAL);
+            if (level().isClientSide() && tickCount - lastBlockedHint > 100) {
+                lastBlockedHint = tickCount;
+                pilot.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("hotairballoons.hint.blocked"));
+            }
+        }
         Vec3 want = new Vec3(vx, vy, vz);
         Vec3 ok = collideBoundingBox(this, want, envelopeBox(), level(), List.of());
         setDeltaMovement(ok.x != want.x ? 0 : vx, ok.y != want.y ? Math.min(0, vy) : vy, ok.z != want.z ? 0 : vz);
@@ -635,7 +645,8 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         ItemStack held = player.getItemInHand(hand);
         InteractionResult looks = restyle(player, held);
         if (looks != InteractionResult.PASS) return looks;
-        if (!player.isSecondaryUseActive() && level() instanceof ServerLevel sl && addFuel(sl, held, player)) {
+        boolean inBasket = player.getVehicle() != this && !(getControllingPassenger() instanceof Player) && BasketShape.inside(player.position(), position(), getYRot()) && fuel() >= REFUEL_AT;
+        if (!inBasket && !player.isSecondaryUseActive() && level() instanceof ServerLevel sl && addFuel(sl, held, player)) {
             playSound(SoundEvents.FIRECHARGE_USE, 0.4F, 1.6F);
             return InteractionResult.SUCCESS_SERVER;
         }
@@ -656,7 +667,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         }
         if (player.isSecondaryUseActive() || player.getVehicle() == this) return InteractionResult.PASS;
         if (level().isClientSide()) return InteractionResult.SUCCESS;
-        if (!(getControllingPassenger() instanceof Player)) return player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
+        if (!(getControllingPassenger() instanceof Player)) {
+            boolean ok = player.startRiding(this);
+            if (ok && HINTED.add(player.getUUID())) player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("hotairballoons.hint.controls"));
+            return ok ? InteractionResult.CONSUME : InteractionResult.PASS;
+        }
         if (BasketShape.inside(player.position(), position(), getYRot())) return InteractionResult.PASS;
         Vec3 spot = BasketShape.toWorld(new Vec3(SEAT_OFFSET, BasketShape.FLOOR_TOP + 0.01, SEAT_OFFSET), position(), getYRot());
         player.teleportTo(spot.x, spot.y, spot.z);
@@ -729,12 +744,18 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     /** Server: burn fuel while someone is aboard and aloft; top up from the pilot or the chest when low. */
     private void useFuel(ServerLevel sl, boolean piloted) {
         Config c = Config.get();
-        if (!c.needsFuel) {
+        boolean creative = getControllingPassenger() instanceof Player cp && cp.hasInfiniteMaterials();
+        if (!c.needsFuel || creative) {
+            if (fuel() != UNLIMITED) savedFuel = Math.max(0, fuel());
             entityData.set(DATA_FUEL, UNLIMITED);
             return;
         }
         int fuel = fuel();
-        if (fuel == UNLIMITED) fuel = 0;
+        if (fuel == UNLIMITED) fuel = savedFuel;
+        if (piloted && fuel == 0 && pilotBurner && tickCount - lastFuelHint > 100 && getControllingPassenger() instanceof Player out) {
+            lastFuelHint = tickCount;
+            out.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("hotairballoons.hint.no_fuel"));
+        }
         if (piloted && !resting()) {
             fuelUsed += (burning ? BURN_USE : IDLE_USE) * c.fuelUse / 100.0F;
             int whole = (int) fuelUsed;
@@ -928,7 +949,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         writeLeashData(output, leashData);
         output.putFloat("heat", heat);
         output.putBoolean("chest", hasChest());
-        output.putInt("fuel", Math.max(0, fuel()));
+        output.putInt("fuel", fuel() == UNLIMITED ? savedFuel : Math.max(0, fuel()));
         if (!look().equals(EnvelopeLook.DEFAULT)) output.store("look", EnvelopeLook.CODEC, look());
         if (hasChest()) addChestVehicleSaveData(output);
     }
