@@ -6,24 +6,19 @@ import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import org.jspecify.annotations.Nullable;
 
-/** Burner whoosh and roar plus basket creaks, played locally on every client from the balloon's synced state. */
+/** Burner whoosh and roar plus wind, played locally on every client from the balloon's synced state. */
 public final class BalloonSounds {
     private static final Map<HotAirBalloon, State> STATES = new WeakHashMap<>();
-    private static final SoundEvent[] CREAKS = {SoundEvents.SCAFFOLDING_STEP, SoundEvents.BAMBOO_WOOD_HIT, SoundEvents.LADDER_STEP};
 
     private BalloonSounds() {}
 
     private static final class State {
         boolean burning;
-        int passengers;
-        int creakIn = 60;
         @Nullable Roar roar;
         @Nullable Gale gale;
         double wind;
@@ -35,11 +30,9 @@ public final class BalloonSounds {
         State s = STATES.computeIfAbsent(b, k -> {
             State n = new State();
             n.burning = k.burnerLit();
-            n.passengers = k.getPassengers().size();
             n.wind = k.wind().horizontalDistance();
             return n;
         });
-        RandomSource rnd = b.getRandom();
 
         boolean burning = b.burnerLit();
         if (burning && !s.burning) {
@@ -53,8 +46,8 @@ public final class BalloonSounds {
 
         double wind = b.onGround() ? 0 : b.wind().horizontalDistance();
         if (s.gustQuiet > 0) s.gustQuiet--;
-        if (wind > 0.08 && wind - s.wind > 0.04 && s.gustQuiet == 0) {
-            b.level().playLocalSound(b.getX(), b.getY() + 4, b.getZ(), SoundEvents.BREEZE_WHIRL, SoundSource.NEUTRAL, 0.7F, 0.6F, false);
+        if (wind > 0.04 && wind - s.wind > 0.02 && s.gustQuiet == 0) {
+            b.level().playLocalSound(b.getX(), b.getY() + 4, b.getZ(), SoundEvents.BREEZE_WHIRL, SoundSource.NEUTRAL, 1.2F, 0.6F, false);
             s.gustQuiet = 200;
         }
         s.wind += (wind - s.wind) * 0.05;
@@ -62,19 +55,6 @@ public final class BalloonSounds {
             s.gale = new Gale(b);
             mc.getSoundManager().play(s.gale);
         }
-
-        int passengers = b.getPassengers().size();
-        boolean changed = passengers != s.passengers;
-        s.passengers = passengers;
-        if (changed || (!b.onGround() && --s.creakIn <= 0)) {
-            if (!changed || !b.onGround()) creak(b, rnd, changed ? 0.35F : 0.22F);
-            s.creakIn = 60 + rnd.nextInt(140);
-        }
-    }
-
-    private static void creak(HotAirBalloon b, RandomSource rnd, float volume) {
-        SoundEvent e = CREAKS[rnd.nextInt(CREAKS.length)];
-        b.level().playLocalSound(b.getX(), b.getY() + 0.5, b.getZ(), e, SoundSource.NEUTRAL, volume, 0.5F + rnd.nextFloat() * 0.2F, false);
     }
 
     /** Looping burner roar bound to the balloon, fading over about four ticks. */
@@ -118,8 +98,8 @@ public final class BalloonSounds {
 
     /** Rushing air in strong wind (gusts up high), louder with the wind; fades out when it drops. */
     private static final class Gale extends AbstractTickableSoundInstance {
-        static final double FROM = 0.15, FULL = 0.45;
-        private static final float MAX = 0.5F;
+        static final double FROM = 0.03, FULL = 0.22;
+        private static final float MAX = 0.7F;
         private final HotAirBalloon balloon;
 
         Gale(HotAirBalloon balloon) {
