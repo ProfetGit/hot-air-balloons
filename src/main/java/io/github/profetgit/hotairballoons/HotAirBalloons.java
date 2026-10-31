@@ -18,6 +18,7 @@ public final class HotAirBalloons implements ModInitializer {
     public void onInitialize() {
         ModContent.init();
         io.github.profetgit.hotairballoons.net.BalloonInput.register();
+        io.github.profetgit.hotairballoons.net.BalloonClick.register();
         LOG.info("Hot Air Balloons loaded");
     }
 }

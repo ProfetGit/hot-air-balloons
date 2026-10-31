@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.27
+## 0.0.28
 
 First public beta, Fabric 26.3. Needed on the server and on every player's game, with Fabric API.
 
@@ -13,5 +13,5 @@ First public beta, Fabric 26.3. Needed on the server and on every player's game,
 - Mooring: tie a balloon to any fence with a lead and it floats up on its own and hovers at the end of the rope.
 - Burner fuel: coal, charcoal, wood, blaze rods, anything a furnace burns, refilled from your inventory or the chest. Creative players need none.
 - Short hints for the controls, an empty tank and a spot with no room.
-- Wind rush and gust sounds start earlier and louder.
+- Wind rush and gust sounds start earlier and louder. Wind lines show only to people in the basket. You can click the envelope, not just the basket. The camera no longer shows a white wall when it passes into the envelope.
 - Nobody aboard takes fall damage. Advancement "Up, Up and Away". Settings in Mod Menu and `config/hotairballoons.json`.

@@ -70,11 +70,16 @@ public class BalloonRenderer extends EntityRenderer<HotAirBalloon, BalloonRender
         int light = state.lightCoords, overlay = OverlayTexture.NO_OVERLAY;
         collector.submitModel(model, state, poseStack, RenderTypes.entityCutout(TEXTURE), light, overlay, -1, null, state.outlineColor);
         boolean framed = state.emblemCount > 0;
-        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? ENVELOPE_FRAMED : ENVELOPE), light, overlay, state.primary, null, state.outlineColor);
-        collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? STRIPES_FRAMED : STRIPES), light, overlay, state.secondary, null, state.outlineColor);
-        for (int i = 0; i < state.emblemCount; i++) {
-            collector.submitModel(envelope, state, poseStack, RenderTypes.entityTranslucent(state.emblemTextures[i]), light, overlay,
-                state.emblemColors[i], null, state.outlineColor);
+        double cx = camera.pos.x - state.x, cy = camera.pos.y - state.y, cz = camera.pos.z - state.z;
+        boolean inside = Math.abs(cx) < HotAirBalloon.ENVELOPE_HALF + 0.4 && Math.abs(cz) < HotAirBalloon.ENVELOPE_HALF + 0.4
+            && cy > HotAirBalloon.ENVELOPE_BOTTOM - 0.4 && cy < HotAirBalloon.ENVELOPE_TOP + 0.4;
+        if (!inside) {
+            collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? ENVELOPE_FRAMED : ENVELOPE), light, overlay, state.primary, null, state.outlineColor);
+            collector.submitModel(envelope, state, poseStack, RenderTypes.entityCutout(framed ? STRIPES_FRAMED : STRIPES), light, overlay, state.secondary, null, state.outlineColor);
+            for (int i = 0; i < state.emblemCount; i++) {
+                collector.submitModel(envelope, state, poseStack, RenderTypes.entityTranslucent(state.emblemTextures[i]), light, overlay,
+                    state.emblemColors[i], null, state.outlineColor);
+            }
         }
         collector.submitModel(flame, state, poseStack, RenderTypes.eyes(TEXTURE), light, overlay, -1, null, 0);
         poseStack.popPose();

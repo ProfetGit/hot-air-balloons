@@ -1,6 +1,7 @@
 package io.github.profetgit.hotairballoons.client;
 
 import io.github.profetgit.hotairballoons.ModContent;
+import io.github.profetgit.hotairballoons.entity.BasketShape;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import io.github.profetgit.hotairballoons.entity.Wind;
 import io.github.profetgit.hotairballoons.net.BalloonInput;
@@ -38,6 +39,7 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
             BalloonSounds.tick(b);
             spawnWindLines(b);
         };
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, level, hand) -> envelopeClick(player, level, hand));
         HotAirBalloon.localInput = HotAirBalloonsClient::keys;
         HotAirBalloon.localPlayer = () -> Minecraft.getInstance().player;
         ClientTickEvents.END_CLIENT_TICK.register(HotAirBalloonsClient::sendKeys);
@@ -46,6 +48,31 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES).registerReloadListener(
             io.github.profetgit.hotairballoons.HotAirBalloons.id("emblems"),
             (net.minecraft.server.packs.resources.ResourceManagerReloadListener) rm -> EmblemTextures.clear());
+    }
+
+    /** Reached only when vanilla found nothing to use: a click that points at a balloon's envelope acts like a click on its basket. */
+    private static net.minecraft.world.InteractionResult envelopeClick(net.minecraft.world.entity.player.Player player, net.minecraft.world.level.Level level,
+                                                                       net.minecraft.world.InteractionHand hand) {
+        if (!level.isClientSide() || player != Minecraft.getInstance().player || player.isSpectator() || !ClientPlayNetworking.canSend(io.github.profetgit.hotairballoons.net.BalloonClick.TYPE)) {
+            return net.minecraft.world.InteractionResult.PASS;
+        }
+        Vec3 eye = player.getEyePosition();
+        Vec3 end = eye.add(player.getViewVector(1.0F).scale(io.github.profetgit.hotairballoons.net.BalloonClick.REACH));
+        net.minecraft.world.phys.HitResult hit = Minecraft.getInstance().hitResult;
+        double wall = hit != null && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK ? hit.getLocation().distanceToSqr(eye) : Double.MAX_VALUE;
+        HotAirBalloon best = null;
+        double bestD = wall;
+        for (HotAirBalloon b : level.getEntitiesOfClass(HotAirBalloon.class, player.getBoundingBox().inflate(12))) {
+            if (player.getVehicle() == b || BasketShape.inside(player.position(), b.position(), b.getYRot())) continue;
+            var at = b.envelopeBox().clip(eye, end);
+            if (at.isPresent() && at.get().distanceToSqr(eye) < bestD) {
+                best = b;
+                bestD = at.get().distanceToSqr(eye);
+            }
+        }
+        if (best == null) return net.minecraft.world.InteractionResult.PASS;
+        ClientPlayNetworking.send(new io.github.profetgit.hotairballoons.net.BalloonClick(best.getId(), hand == net.minecraft.world.InteractionHand.OFF_HAND));
+        return net.minecraft.world.InteractionResult.SUCCESS;
     }
 
     private static final double MIN_WIND = 0.004;
@@ -57,6 +84,7 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         if (level.getGameTime() % 20 == 0) WindLineParticle.purge(level);
         int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING, b.getBlockX(), b.getBlockZ());
         if (b.getY() - ground < 2.0) return;
+        if (mc.player == null || (mc.player.getVehicle() != b && !BasketShape.inside(mc.player.position(), b.position(), b.getYRot()))) return;
         RandomSource rnd = b.getRandom();
         double share = status == ParticleStatus.DECREASED ? 0.4 : 1.0;
         boolean piloted = mc.player != null && mc.player.getVehicle() == b;
