@@ -1,0 +1,30 @@
+{
+  "rows": [
+    "WWW",
+    "SCS",
+    "PPP"
+  ],
+  "keys": {
+    "W": [
+      "block",
+      "white_wool"
+    ],
+    "P": [
+      "slab",
+      "oak_planks"
+    ],
+    "S": [
+      "item",
+      "string"
+    ],
+    "C": [
+      "item",
+      "campfire"
+    ]
+  },
+  "result": [
+    "own",
+    "src/main/resources/assets/hotairballoons/textures/item/hot_air_balloon.png"
+  ],
+  "scale": 3
+}
