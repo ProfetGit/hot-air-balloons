@@ -23,7 +23,7 @@ def iso(top, side, slab=False):
     px = out.load()
     t, s = top.load(), side.load()
     h = 8 if slab else 16
-    dy = 8 if slab else 0
+    dy = 4 if slab else 0
     for y in range(16):
         for x in range(16):
             fx, fy = x + 0.5, y + 0.5
@@ -71,7 +71,7 @@ def main():
     }
     for r, row in enumerate(("WWW", "SCS", "PPP")):
         for c, k in enumerate(row):
-            gui.alpha_composite(icons[k], (30 + 18 * c + 1, 17 + 18 * r + 1))
+            gui.alpha_composite(icons[k], (30 + 18 * c, 17 + 18 * r))
     result = Image.open(ROOT / "src/main/resources/assets/hotairballoons/textures/item/hot_air_balloon.png").convert("RGBA")
     gui.alpha_composite(result, (124, 35))
     top = gui.crop((0, 0, 176, 76))
