@@ -29,6 +29,10 @@
 
 Craft a **Hot Air Balloon** (three wool on top, string, a campfire and string in the middle, three wooden slabs below) and use it on the ground to set it up. Click it to take the controls; you stand at the burner.
 
+![The crafting recipe: three wool, string, a campfire and string, three wooden slabs](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/recipe.webp)
+
+Any colour of wool and any wooden slab work.
+
 - **Jump** (Space): burner, climb
 - **Sprint** (Ctrl): vent, sink
 - **Left/right**: turn; **forward/back**: a slow push
