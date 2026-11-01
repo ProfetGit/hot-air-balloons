@@ -82,7 +82,6 @@ def main():
     big = gui.resize((gui.width * SCALE, gui.height * SCALE), Image.NEAREST)
     out = ROOT / "docs/desc"
     out.mkdir(parents=True, exist_ok=True)
-    big.
     big.save(out / "recipe.webp", lossless=True)
     print("wrote", out / "recipe.webp", big.size)
 
