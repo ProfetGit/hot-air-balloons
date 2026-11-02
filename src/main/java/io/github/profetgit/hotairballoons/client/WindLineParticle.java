@@ -3,12 +3,12 @@ package io.github.profetgit.hotairballoons.client;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import java.util.ArrayList;
 import java.util.List;
-import net.fabricmc.fabric.api.client.particle.v1.FabricSpriteSet;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SingleQuadParticle;
+import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.Mth;
@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
  * away, and it fades when seen end-on.
  */
 public final class WindLineParticle extends SingleQuadParticle {
-    private static @Nullable FabricSpriteSet sprites;
+    private static @Nullable SpriteSet sprites;
     private static final List<WindLineParticle> LIVE = new ArrayList<>();
 
     private static final int FADE_IN = 6;
@@ -186,7 +186,7 @@ public final class WindLineParticle extends SingleQuadParticle {
     }
 
     /** Registers the sprite set; lines are spawned directly with {@link #spawn}. */
-    public record Provider(FabricSpriteSet set) implements ParticleProvider<SimpleParticleType> {
+    public record Provider(SpriteSet set) implements ParticleProvider<SimpleParticleType> {
         public Provider {
             sprites = set;
         }

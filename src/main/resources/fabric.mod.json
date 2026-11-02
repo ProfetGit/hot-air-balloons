@@ -15,13 +15,13 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "io.github.profetgit.hotairballoons.HotAirBalloons"
+      "io.github.profetgit.hotairballoons.platform.fabric.FabricEntry"
     ],
     "client": [
-      "io.github.profetgit.hotairballoons.client.HotAirBalloonsClient"
+      "io.github.profetgit.hotairballoons.platform.fabric.FabricClientEntry"
     ],
     "modmenu": [
-      "io.github.profetgit.hotairballoons.client.ModMenuEntry"
+      "io.github.profetgit.hotairballoons.platform.fabric.ModMenuEntry"
     ]
   },
   "mixins": [

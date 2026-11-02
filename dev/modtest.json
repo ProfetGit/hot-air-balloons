@@ -36,7 +36,11 @@
       "jobs": [
         {
           "mc": "26.3",
-          "loader": "fabric"
+          "loader": [
+            "fabric",
+            "neoforge",
+            "forge"
+          ]
         }
       ]
     },
@@ -47,7 +51,11 @@
       "jobs": [
         {
           "mc": "26.3",
-          "loader": "fabric"
+          "loader": [
+            "fabric",
+            "neoforge",
+            "forge"
+          ]
         }
       ]
     }

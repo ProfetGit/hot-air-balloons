@@ -64,6 +64,7 @@ tasks.processResources {
         "fabric_loader" to project.property("deps.fabric_loader"),
     )
     inputs.properties(props)
+    exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
     filesMatching("fabric.mod.json") { expand(props) }
 }
 

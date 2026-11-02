@@ -1,0 +1,21 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "hotairballoons"
+version = "${version}"
+displayName = "${name}"
+authors = "${author}"
+displayURL = "${homepage}"
+logoFile = "assets/hotairballoons/icon.png"
+logoBlur = false
+description = '''${description}'''
+displayTest = "MATCH_VERSION"
+
+[[dependencies.hotairballoons]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[${mc},${mc_next})"
+ordering = "NONE"
+side = "BOTH"

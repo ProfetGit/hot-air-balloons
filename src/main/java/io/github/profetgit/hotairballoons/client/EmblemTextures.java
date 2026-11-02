@@ -22,7 +22,7 @@ import org.jspecify.annotations.Nullable;
  * envelope already wears the banner's base colour. Every layer is shaded like the envelope under it, so it reads as
  * painted on. Rebuilt after a resource reload.
  */
-final class EmblemTextures {
+public final class EmblemTextures {
     private static final Identifier MAP = HotAirBalloons.id("textures/entity/hot_air_balloon_emblem_map.png");
     /** The envelope's own greyscale textures: the emblem takes their shading so it doesn't show as a flat patch. */
     private static final Identifier[] SHADING = {HotAirBalloons.id("textures/entity/hot_air_balloon_envelope_framed.png"),
@@ -86,7 +86,7 @@ final class EmblemTextures {
         return done;
     }
 
-    static void clear() {
+    public static void clear() {
         var tm = Minecraft.getInstance().getTextureManager();
         for (Identifier id : MADE.values()) if (id != null) tm.release(id);
         for (NativeImage img : PATTERNS.values()) if (img != null) img.close();

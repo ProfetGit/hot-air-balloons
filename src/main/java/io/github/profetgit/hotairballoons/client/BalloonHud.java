@@ -23,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * carries you clearly faster the way you look. Shown only while flying a balloon; the fuel bar is left out when the
  * server doesn't use fuel.
  */
-final class BalloonHud {
+public final class BalloonHud {
     private static final int W = 5, H = 20, GAP = 3;
     private static final int CELL = 9;
     /** A layer must beat the wind here by this much (blocks per tick toward where you look) to get a chevron. */
@@ -35,7 +35,7 @@ final class BalloonHud {
 
     private BalloonHud() {}
 
-    static void draw(GuiGraphicsExtractor g, DeltaTracker delta) {
+    public static void draw(GuiGraphicsExtractor g, DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.gui.hud.isHidden() || !(mc.player.getVehicle() instanceof HotAirBalloon b) || b.getControllingPassenger() != mc.player) return;
         int x = g.guiWidth() / 2 + 91 + 6, y = g.guiHeight() - H - 2;

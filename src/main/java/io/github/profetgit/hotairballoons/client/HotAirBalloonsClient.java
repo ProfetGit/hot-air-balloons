@@ -5,14 +5,9 @@ import io.github.profetgit.hotairballoons.entity.BasketShape;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
 import io.github.profetgit.hotairballoons.entity.Wind;
 import io.github.profetgit.hotairballoons.net.BalloonInput;
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.particle.v1.ParticleProviderRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
+import io.github.profetgit.hotairballoons.net.Net;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -22,38 +17,28 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** Client entry: renderer, model layer, particles, sounds and the pilot's keys. */
-public final class HotAirBalloonsClient implements ClientModInitializer {
+public final class HotAirBalloonsClient {
     /** Test driver override for the pilot's keys; null = the real keyboard. */
     public static @Nullable Input testInput;
     private static @Nullable BalloonInput sent;
     private static int sinceSent;
 
-    @Override
-    public void onInitializeClient() {
-        ModelLayerRegistry.registerModelLayer(BalloonModel.LAYER, BalloonModel::createLayer);
-        ModelLayerRegistry.registerModelLayer(BalloonModel.FLAME_LAYER, BalloonModel::createFlameLayer);
-        ModelLayerRegistry.registerModelLayer(BalloonModel.ENVELOPE_LAYER, BalloonModel::createEnvelopeLayer);
-        EntityRenderers.register(ModContent.BALLOON, BalloonRenderer::new);
-        ParticleProviderRegistry.getInstance().register(ModContent.WIND_LINE, WindLineParticle.Provider::new);
+    private HotAirBalloonsClient() {}
+
+    /** Loader-neutral client setup; the platform's client entry registers the renderer, layers, particle, HUD and key tick. */
+    public static void init() {
         HotAirBalloon.clientTick = b -> {
             BalloonSounds.tick(b);
             spawnWindLines(b);
         };
-        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, level, hand) -> envelopeClick(player, level, hand));
         HotAirBalloon.localInput = HotAirBalloonsClient::keys;
         HotAirBalloon.localPlayer = () -> Minecraft.getInstance().player;
-        ClientTickEvents.END_CLIENT_TICK.register(HotAirBalloonsClient::sendKeys);
-        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.attachElementAfter(
-            net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.HOTBAR, io.github.profetgit.hotairballoons.HotAirBalloons.id("gauges"), BalloonHud::draw);
-        net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES).registerReloadListener(
-            io.github.profetgit.hotairballoons.HotAirBalloons.id("emblems"),
-            (net.minecraft.server.packs.resources.ResourceManagerReloadListener) rm -> EmblemTextures.clear());
     }
 
     /** Reached only when vanilla found nothing to use: a click that points at a balloon's envelope acts like a click on its basket. */
-    private static net.minecraft.world.InteractionResult envelopeClick(net.minecraft.world.entity.player.Player player, net.minecraft.world.level.Level level,
+    public static net.minecraft.world.InteractionResult envelopeClick(net.minecraft.world.entity.player.Player player, net.minecraft.world.level.Level level,
                                                                        net.minecraft.world.InteractionHand hand) {
-        if (!level.isClientSide() || player != Minecraft.getInstance().player || player.isSpectator() || !ClientPlayNetworking.canSend(io.github.profetgit.hotairballoons.net.BalloonClick.TYPE)) {
+        if (!level.isClientSide() || player != Minecraft.getInstance().player || player.isSpectator() || !Net.canSend.test(io.github.profetgit.hotairballoons.net.BalloonClick.TYPE)) {
             return net.minecraft.world.InteractionResult.PASS;
         }
         Vec3 eye = player.getEyePosition();
@@ -71,7 +56,7 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
             }
         }
         if (best == null) return net.minecraft.world.InteractionResult.PASS;
-        ClientPlayNetworking.send(new io.github.profetgit.hotairballoons.net.BalloonClick(best.getId(), hand == net.minecraft.world.InteractionHand.OFF_HAND));
+        Net.send.accept(new io.github.profetgit.hotairballoons.net.BalloonClick(best.getId(), hand == net.minecraft.world.InteractionHand.OFF_HAND));
         return net.minecraft.world.InteractionResult.SUCCESS;
     }
 
@@ -154,7 +139,8 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         return p == null ? Input.EMPTY : p.input.keyPresses;
     }
 
-    private static void sendKeys(Minecraft mc) {
+    /** End of every client tick. */
+    public static void sendKeys(Minecraft mc) {
         if (mc.player == null || !(mc.player.getVehicle() instanceof HotAirBalloon b) || b.getControllingPassenger() != mc.player) {
             sent = null;
             return;
@@ -162,8 +148,8 @@ public final class HotAirBalloonsClient implements ClientModInitializer {
         Input k = keys();
         BalloonInput now = new BalloonInput(k.jump(), k.sprint());
         if (now.equals(sent) && ++sinceSent < 20) return;
-        if (!ClientPlayNetworking.canSend(BalloonInput.TYPE)) return;
-        ClientPlayNetworking.send(now);
+        if (!Net.canSend.test(BalloonInput.TYPE)) return;
+        Net.send.accept(now);
         sent = now;
         sinceSent = 0;
     }

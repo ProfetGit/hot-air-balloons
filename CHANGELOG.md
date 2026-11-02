@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.30
+
+Now also for NeoForge and Forge 26.3. The Fabric file works on Quilt (with Quilted Fabric API).
+
 ## 0.0.29
 
 First public beta, Fabric 26.3. Needed on the server and on every player's game, with Fabric API.

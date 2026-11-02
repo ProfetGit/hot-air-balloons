@@ -2,8 +2,7 @@ package io.github.profetgit.hotairballoons.net;
 
 import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -23,12 +22,9 @@ public record BalloonInput(boolean burner, boolean vent) implements CustomPacket
         return TYPE;
     }
 
-    public static void register() {
-        PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
-        ServerPlayNetworking.registerGlobalReceiver(TYPE, (msg, ctx) -> ctx.server().execute(() -> {
-            if (ctx.player().getVehicle() instanceof HotAirBalloon b && b.getControllingPassenger() == ctx.player()) {
-                b.setPilotKeys(msg.burner(), msg.vent());
-            }
-        }));
+    public static void handle(ServerPlayer player, BalloonInput msg) {
+        if (player.getVehicle() instanceof HotAirBalloon b && b.getControllingPassenger() == player) {
+            b.setPilotKeys(msg.burner(), msg.vent());
+        }
     }
 }

@@ -2,8 +2,7 @@ package io.github.profetgit.hotairballoons.net;
 
 import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.entity.HotAirBalloon;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -26,14 +25,10 @@ public record BalloonClick(int entityId, boolean offHand) implements CustomPacke
         return TYPE;
     }
 
-    public static void register() {
-        PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
-        ServerPlayNetworking.registerGlobalReceiver(TYPE, (msg, ctx) -> ctx.server().execute(() -> {
-            var player = ctx.player();
-            Entity e = player.level().getEntity(msg.entityId());
-            if (!(e instanceof HotAirBalloon b)) return;
-            if (b.envelopeBox().distanceToSqr(player.getEyePosition()) > (REACH + 1) * (REACH + 1)) return;
-            b.interact(player, msg.offHand() ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND, b.position());
-        }));
+    public static void handle(ServerPlayer player, BalloonClick msg) {
+        Entity e = player.level().getEntity(msg.entityId());
+        if (!(e instanceof HotAirBalloon b)) return;
+        if (b.envelopeBox().distanceToSqr(player.getEyePosition()) > (REACH + 1) * (REACH + 1)) return;
+        b.interact(player, msg.offHand() ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND, b.position());
     }
 }
