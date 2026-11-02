@@ -53,6 +53,7 @@
           "mc": "26.3",
           "loader": [
             "fabric",
+            "quilt",
             "neoforge",
             "forge"
           ]
