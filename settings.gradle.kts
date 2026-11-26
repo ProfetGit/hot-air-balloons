@@ -18,6 +18,7 @@ stonecutter {
         fun target(mc: String, vararg loaders: String) =
             loaders.forEach { version("$mc-$it", mc).buildscript = "build.$it.gradle.kts" }
 
+        version("1.21.1-neoforge", "1.21.1").buildscript = "build.neoforge-legacy.gradle.kts"
         target("26.3", "fabric", "neoforge", "forge")
         vcsVersion = "26.3-fabric"
     }
