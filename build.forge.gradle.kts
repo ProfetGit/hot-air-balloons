@@ -82,3 +82,7 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+extra["mcVersion"] = mc
+apply(from = rootProject.file("dev/data.gradle.kts"))
+if (mc != "26.3") apply(from = rootProject.file("../../tools/Backport/renames.gradle.kts"))

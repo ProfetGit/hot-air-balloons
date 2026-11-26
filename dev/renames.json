@@ -1,0 +1,651 @@
+[
+  {
+    "regex": ", net\\.minecraft\\.util\\.Prediction\\.SERVER_ONLY",
+    "to": "",
+    "when": "<26.3"
+  },
+  {
+    "regex": "\\.rotateDegrees\\((Axis\\.\\w+), (.*)\\);",
+    "to": ".mulPose($1.rotationDegrees($2));",
+    "when": "<26.3",
+    "files": "^BalloonRenderer\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "(collector\\.submitModel\\([^;]*)\\);",
+    "to": "$1, null);",
+    "when": "<26.3",
+    "files": "^BalloonRenderer\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "getBoundingBoxForCulling\\(HotAirBalloon entity, float partialTicks\\)",
+    "to": "getBoundingBoxForCulling(HotAirBalloon entity)",
+    "when": "<26.3"
+  },
+  {
+    "regex": "\\bEntityTypes\\b",
+    "to": "EntityType",
+    "when": "<26.2"
+  },
+  {
+    "regex": "mc\\.gui\\.isHidden\\(\\)",
+    "to": "mc.options.hideGui",
+    "when": "<26.2"
+  },
+  {
+    "regex": "mc\\.gui\\.toggle\\(\\)",
+    "to": "mc.options.hideGui = !mc.options.hideGui",
+    "when": "<26.2"
+  },
+  {
+    "regex": "WorldPresets::createTestWorldDimensions",
+    "to": "access -> access.registryOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions()",
+    "when": "<1.21.11",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "from": "createTestWorldDimensions",
+    "to": "createFlatWorldDimensions",
+    "when": ">=1.21.11 <26.2"
+  },
+  {
+    "regex": "OptionInstance\\.ValueUpdateListener<Boolean>",
+    "to": "java.util.function.Consumer<Boolean>",
+    "when": "<26.2"
+  },
+  {
+    "regex": "\\.apply\\(balloon\\)",
+    "to": ".accept(balloon)",
+    "when": "<26.2",
+    "files": "^BalloonItem\\.java$"
+  },
+  {
+    "regex": "net\\.minecraft\\.client\\.renderer\\.state\\.level\\.",
+    "to": "net.minecraft.client.renderer.state.",
+    "when": "<26.1"
+  },
+  {
+    "regex": "getLightCoords\\(float a\\)",
+    "to": "getLightColor(float a)",
+    "when": "<26.1",
+    "files": "^WindLineParticle\\.java$"
+  },
+  {
+    "regex": "\\bg\\.text\\(",
+    "to": "g.drawString(",
+    "when": "<26.1",
+    "files": "^BalloonHud\\.java$"
+  },
+  {
+    "regex": "\\be\\.is\\(EntityTypeTags\\.",
+    "to": "e.getType().is(EntityTypeTags.",
+    "when": "<26.1",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "(\\.interact(?:On)?\\([^;]*?), b\\.position\\(\\)\\)",
+    "to": "$1)",
+    "when": "<26.1",
+    "groups": "1"
+  },
+  {
+    "regex": "GameType\\.SURVIVAL,\\s*new LevelSettings\\.DifficultySettings\\(Difficulty\\.PEACEFUL, false, false\\), true,",
+    "to": "GameType.SURVIVAL, false, Difficulty.PEACEFUL, true, new net.minecraft.world.level.GameRules(),",
+    "when": "<1.21.11",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "GameType\\.SURVIVAL,\\s*new LevelSettings\\.DifficultySettings\\(Difficulty\\.PEACEFUL, false, false\\), true,",
+    "to": "GameType.SURVIVAL, false, Difficulty.PEACEFUL, true, new net.minecraft.world.level.gamerules.GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures()),",
+    "when": ">=1.21.11 <26.1",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "st\\.chest\\.isEmpty\\(\\)",
+    "to": "st.chest.isAir()",
+    "when": "<26.1",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "creativetab\\.v1\\.CreativeModeTabEvents",
+    "to": "itemgroup.v1.ItemGroupEvents",
+    "when": "<26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "CreativeModeTabEvents\\.modifyOutputEvent",
+    "to": "ItemGroupEvents.modifyEntriesEvent",
+    "when": "<26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "\\bFabricEntityDataRegistry\\b",
+    "to": "FabricTrackedDataRegistry",
+    "when": ">=1.21.11 <26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "PayloadTypeRegistry\\.serverboundPlay\\(\\)",
+    "to": "PayloadTypeRegistry.playC2S()",
+    "when": "<26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "\\bParticleProviderRegistry\\b",
+    "to": "ParticleFactoryRegistry",
+    "when": "<26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "\\bModelLayerRegistry\\b",
+    "to": "EntityModelLayerRegistry",
+    "when": "<26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "\\bregisterReloadListener\\(",
+    "to": "registerReloader(",
+    "when": ">=1.21.11 <26.1",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "RenderTypes\\.entityCutout\\(",
+    "to": "RenderTypes.entityCutoutNoCull(",
+    "when": "<26.1",
+    "files": "^BalloonRenderer\\.java$"
+  },
+  {
+    "regex": "org\\.jspecify\\.annotations\\.Nullable",
+    "to": "org.jetbrains.annotations.Nullable",
+    "when": "<1.21.11"
+  },
+  {
+    "regex": "net\\.minecraft\\.world\\.level\\.gamerules\\.GameRules",
+    "to": "net.minecraft.world.level.GameRules",
+    "when": "<1.21.11"
+  },
+  {
+    "regex": "getGameRules\\(\\)\\.get\\(GameRules\\.ENTITY_DROPS\\)",
+    "to": "getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)",
+    "when": "<1.21.11"
+  },
+  {
+    "regex": "net\\.minecraft\\.world\\.entity\\.player\\.Input;",
+    "to": "io.github.profetgit.hotairballoons.legacy.Input;",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "net\\.minecraft\\.util\\.ARGB;",
+    "to": "io.github.profetgit.hotairballoons.legacy.ARGB;",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "(\\w+)\\.getPixel\\(",
+    "to": "io.github.profetgit.hotairballoons.legacy.Pixels.get($1, ",
+    "when": "<1.21.2",
+    "files": "^EmblemTextures\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.setPixel\\(",
+    "to": "io.github.profetgit.hotairballoons.legacy.Pixels.set($1, ",
+    "when": "<1.21.2",
+    "files": "^EmblemTextures\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "new DynamicTexture\\(id::toString, ",
+    "to": "new DynamicTexture(",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\bisLocalInstanceAuthoritative\\(\\)",
+    "to": "isControlledByLocalInstance()",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": ", EntitySpawnReason\\.\\w+\\)",
+    "to": ")",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "import net\\.minecraft\\.world\\.entity\\.EntitySpawnReason;",
+    "to": "",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "InteractionResult\\.SUCCESS_SERVER",
+    "to": "InteractionResult.SUCCESS",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "\\.getNonEquipmentItems\\(\\)",
+    "to": ".items",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\b(get|set)ContainerLootTable(Seed)?\\b",
+    "to": "$1LootTable$2",
+    "when": "<1.21.2",
+    "groups": "1"
+  },
+  {
+    "regex": "\\.hurtServer\\((\\w+), ",
+    "to": ".hurt(",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "spawnAtLocation\\(level, ",
+    "to": "spawnAtLocation(",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "\\bkill\\(level\\);",
+    "to": "kill();",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "\\bdropLeash\\(\\);",
+    "to": "dropLeash(true, true);",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\bapplyEffectsFromBlocks\\(\\);",
+    "to": "checkInsideBlocks();",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "\\.snapTo\\(",
+    "to": ".moveTo(",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\bgetValueOrThrow\\(",
+    "to": "getOrThrow(",
+    "when": "<1.21.2",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "net\\.minecraft\\.server\\.level\\.ParticleStatus",
+    "to": "net.minecraft.client.ParticleStatus",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "\\s*\\.noLootTable\\(\\)",
+    "to": "",
+    "when": "<1.21.2",
+    "files": "^ModContent\\.java$"
+  },
+  {
+    "regex": "\\.setId\\(itemKey\\)",
+    "to": "",
+    "when": "<1.21.2",
+    "files": "^ModContent\\.java$"
+  },
+  {
+    "regex": "getMainCamera\\(\\)\\.yRot\\(\\)",
+    "to": "getMainCamera().getYRot()",
+    "when": "<1.21.11",
+    "files": "^BalloonHud\\.java$"
+  },
+  {
+    "regex": "camera\\.position\\(\\)",
+    "to": "camera.getPosition()",
+    "when": "<1.21.11",
+    "files": "^WindLineParticle\\.java$"
+  },
+  {
+    "regex": "\\.getInventory\\(\\)\\.contains\\(st ->",
+    "to": ".getInventory().hasAnyMatching(st ->",
+    "when": "<1.21.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "SharedConstants\\.getCurrentVersion\\(\\)\\.name\\(\\)",
+    "to": "SharedConstants.getCurrentVersion().getName()",
+    "when": "<1.21.6"
+  },
+  {
+    "regex": "import net\\.fabricmc\\.fabric\\.api\\.object\\.builder\\.v1\\.entity\\.FabricEntityDataRegistry;",
+    "to": "",
+    "when": "<1.21.11",
+    "files": "^FabricEntry\\.java$"
+  },
+  {
+    "regex": "FabricEntityDataRegistry\\.register\\(HotAirBalloons\\.id\\(\\\"envelope_look\\\"\\), ModContent\\.LOOK_SERIALIZER\\);",
+    "to": "net.minecraft.network.syncher.EntityDataSerializers.registerSerializer(ModContent.LOOK_SERIALIZER);",
+    "when": "<1.21.11",
+    "files": "^FabricEntry\\.java$"
+  },
+  {
+    "regex": "net\\.neoforged\\.neoforge\\.client\\.network\\.ClientPacketDistributor;",
+    "to": "net.neoforged.neoforge.network.PacketDistributor;",
+    "when": "<1.21.8",
+    "files": "^NeoForgeClientEntry\\.java$"
+  },
+  {
+    "regex": "\\bClientPacketDistributor::",
+    "to": "PacketDistributor::",
+    "when": "<1.21.8",
+    "files": "^NeoForgeClientEntry\\.java$"
+  },
+  {
+    "regex": "\\bAddClientReloadListenersEvent\\b",
+    "to": "RegisterClientReloadListenersEvent",
+    "when": "<1.21.4",
+    "files": "^NeoForgeClientEntry\\.java$"
+  },
+  {
+    "regex": "event\\.addListener\\(HotAirBalloons\\.id\\(\\\"emblems\\\"\\),\\s*",
+    "to": "event.registerReloadListener(",
+    "when": "<1.21.4",
+    "files": "^NeoForgeClientEntry\\.java$"
+  },
+  {
+    "regex": "\\bEntityRenderers\\.register\\(",
+    "to": "net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(",
+    "when": "<1.21.11",
+    "files": "^Fabric\\w*\\.java$"
+  },
+  {
+    "regex": "(\\w+)\\.set\\(ModContent\\.ENVELOPE, ([^;]*)\\);",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.setLook($1, $2);",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.getOrDefault\\(ModContent\\.ENVELOPE, [\\w.]*EnvelopeLook\\.DEFAULT\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.look($1)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.has\\(ModContent\\.ENVELOPE\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.hasLook($1)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.get\\(ModContent\\.ENVELOPE\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.lookOrNull($1)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.getOrDefault\\(net\\.minecraft\\.core\\.component\\.DataComponents\\.BANNER_PATTERNS,\\s*(?:net\\.minecraft\\.world\\.level\\.block\\.entity\\.)?BannerPatternLayers\\.EMPTY\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.patterns($1)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "(\\w+)\\.set\\(net\\.minecraft\\.core\\.component\\.DataComponents\\.BANNER_PATTERNS, ([^;]*)\\);",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.setPatterns($1, $2);",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "stack\\.set\\(net\\.minecraft\\.core\\.component\\.DataComponents\\.CUSTOM_NAME, getCustomName\\(\\)\\);",
+    "to": "if (getCustomName() != null) stack.setHoverName(getCustomName());",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "\\b(held|stack)\\.consume\\(1, (\\w+)\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.consume($1, 1, $2)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "([\\w.]+(?:\\(\\))?)\\.getTextureDiffuseColor\\(\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.diffuse($1)",
+    "when": "<1.20.5",
+    "groups": "1"
+  },
+  {
+    "regex": "\\bbanner\\(((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*)\\)\\s*\\.get\\(net\\.minecraft\\.core\\.component\\.DataComponents\\.BANNER_PATTERNS\\)",
+    "to": "io.github.profetgit.hotairballoons.legacy.Stacks.patterns(banner($1))",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "net\\.minecraft\\.world\\.level\\.block\\.entity\\.BannerPatternLayers",
+    "to": "io.github.profetgit.hotairballoons.legacy.BannerPatternLayers",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "\\.pattern\\(\\)\\.value\\(\\)\\.assetId\\(\\)",
+    "to": ".assetId()",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "\\.hasInfiniteMaterials\\(\\)",
+    "to": ".getAbilities().instabuild",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "net\\.minecraft\\.network\\.codec\\.StreamCodec",
+    "to": "io.github.profetgit.hotairballoons.legacy.StreamCodec",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "net\\.minecraft\\.network\\.codec\\.ByteBufCodecs",
+    "to": "io.github.profetgit.hotairballoons.legacy.ByteBufCodecs",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "net\\.minecraft\\.network\\.protocol\\.common\\.custom\\.CustomPacketPayload",
+    "to": "io.github.profetgit.hotairballoons.legacy.CustomPacketPayload",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "net\\.minecraft\\.network\\.RegistryFriendlyByteBuf",
+    "to": "net.minecraft.network.FriendlyByteBuf",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "\\bRegistryFriendlyByteBuf\\b",
+    "to": "FriendlyByteBuf",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "DyeColor\\.STREAM_CODEC",
+    "to": "ByteBufCodecs.DYE",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "net\\.minecraft\\.world\\.entity\\.vehicle\\.VehicleEntity",
+    "to": "io.github.profetgit.hotairballoons.legacy.VehicleEntity",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "\\(\\(net\\.minecraft\\.world\\.entity\\.Leashable\\) mobs",
+    "to": "((net.minecraft.world.entity.Mob) mobs",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "\\(net\\.minecraft\\.world\\.entity\\.Leashable\\) mobs",
+    "to": "(net.minecraft.world.entity.Mob) mobs",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "import net\\.minecraft\\.world\\.entity\\.Leashable;",
+    "to": "import io.github.profetgit.hotairballoons.legacy.Leashable;",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "defineSynchedData\\(SynchedEntityData\\.Builder entityData\\)",
+    "to": "defineSynchedData()",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "super\\.defineSynchedData\\(entityData\\);",
+    "to": "super.defineSynchedData();",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "super\\.interact\\(player, hand\\);",
+    "to": "interactLeash(player, hand);",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "e -> e instanceof Leashable l && l\\.getLeashHolder\\(\\) == holder\\)\\.stream\\(\\)\\.map\\(Leashable\\.class::cast\\)",
+    "to": "e -> Leashable.of(e) != null && Leashable.of(e).getLeashHolder() == holder).stream().map(Leashable::of)",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "\\(Entity\\) mob;",
+    "to": "mob.entity();",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "\\(e instanceof Leashable l && l\\.isLeashed\\(\\)\\)",
+    "to": "(e instanceof net.minecraft.world.entity.Mob l && l.isLeashed())",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "LivingEntity\\.getSlotForHand\\(hand\\)",
+    "to": "p -> p.broadcastBreakEvent(hand)",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "GameEvent\\.ENTITY_ACTION",
+    "to": "GameEvent.ENTITY_INTERACT",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "(addChestVehicleSaveData|readChestVehicleSaveData)\\(tag, registryAccess\\(\\)\\)",
+    "to": "$1(tag)",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$",
+    "groups": "1"
+  },
+  {
+    "regex": "registryAccess\\(\\)\\.createSerializationContext\\(NbtOps\\.INSTANCE\\)",
+    "to": "NbtOps.INSTANCE",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "\\.resultOrPartial\\(\\)",
+    "to": ".result()",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "import net\\.minecraft\\.resources\\.ResourceKey;",
+    "to": "import net.minecraft.resources.ResourceLocation;",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "ResourceKey<LootTable>",
+    "to": "ResourceLocation",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "dimensions\\.width\\(\\)",
+    "to": "dimensions.width",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "ARMOR_EQUIP_LEATHER\\.value\\(\\)",
+    "to": "ARMOR_EQUIP_LEATHER",
+    "when": "<1.20.5",
+    "files": "^HotAirBalloon\\.java$"
+  },
+  {
+    "regex": "\\s*\\.eyeHeight\\(0\\.9F\\)",
+    "to": "",
+    "when": "<1.20.5",
+    "files": "^ModContent\\.java$"
+  },
+  {
+    "regex": "(?:net\\.minecraft\\.resources\\.)?ResourceLocation\\.fromNamespaceAndPath\\(",
+    "to": "new net.minecraft.resources.ResourceLocation(",
+    "when": "<1.21"
+  },
+  {
+    "regex": "(?:net\\.minecraft\\.resources\\.)?ResourceLocation\\.withDefaultNamespace\\(",
+    "to": "new net.minecraft.resources.ResourceLocation(",
+    "when": "<1.21"
+  },
+  {
+    "regex": "\\bMath\\.clamp\\(",
+    "to": "net.minecraft.util.Mth.clamp(",
+    "when": "<1.20.5"
+  },
+  {
+    "regex": "import net\\.minecraft\\.client\\.DeltaTracker;",
+    "to": "",
+    "when": "<1.21",
+    "files": "^BalloonHud\\.java$"
+  },
+  {
+    "regex": "DeltaTracker delta",
+    "to": "float delta",
+    "when": "<1.21",
+    "files": "^BalloonHud\\.java$"
+  },
+  {
+    "regex": "SoundEvents\\.BREEZE_WHIRL",
+    "to": "SoundEvents.ENDER_DRAGON_FLAP",
+    "when": "<1.21",
+    "files": "^BalloonSounds\\.java$"
+  },
+  {
+    "regex": "super\\.render\\(entity, entityYaw, partialTicks, poseStack, buffers, light\\);",
+    "to": "io.github.profetgit.hotairballoons.legacy.LeashRope.draw(entity, partialTicks, poseStack, buffers);\n        super.render(entity, entityYaw, partialTicks, poseStack, buffers, light);",
+    "when": "<1.20.5",
+    "files": "^BalloonRenderer\\.java$"
+  },
+  {
+    "regex": "mc\\.isGameLoadFinished\\(\\)",
+    "to": "(mc.getOverlay() == null)",
+    "when": "<1.20.5",
+    "files": "^SelfTest\\.java$"
+  },
+  {
+    "regex": "createWorldDimensions\\(\\), mc\\.screen\\)",
+    "to": "createWorldDimensions())",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "\\.getFirst\\(\\)",
+    "to": ".get(0)",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "getAdvancements\\(\\)\\.get\\(",
+    "to": "getAdvancements().getAdvancement(",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "\\.useWithoutItem\\(sl, p, ",
+    "to": ".use(sl, p, InteractionHand.MAIN_HAND, ",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  },
+  {
+    "regex": "mc\\.level\\.addEntity\\(cam\\)",
+    "to": "mc.level.putNonPlayerEntity(cam.getId(), cam)",
+    "when": "<1.20.5",
+    "files": "^Scenarios\\.java$"
+  }
+]

@@ -73,14 +73,22 @@ public final class SelfTest {
         if (captureLeft <= 0) return;
         Path out = Path.of(OUT, "frames", captureName, String.format("f%03d.png", captureFrame++));
         captureLeft--;
-        Screenshot.takeScreenshot(mc.gameRenderer.mainRenderTarget(), (NativeImage img) -> WRITER.execute(() -> {
+        //? if >=1.21.5 {
+        Screenshot.takeScreenshot(mc.gameRenderer.mainRenderTarget(), (NativeImage img) -> save(img, out));
+        //?} else {
+        /*save(Screenshot.takeScreenshot(mc.getMainRenderTarget()), out);
+        *///?}
+    }
+
+    private static void save(NativeImage img, Path out) {
+        WRITER.execute(() -> {
             try (img) {
                 Files.createDirectories(out.getParent());
                 img.writeToFile(out);
             } catch (IOException e) {
                 HotAirBalloons.LOG.warn("[selftest] frame write failed: {}", e.toString());
             }
-        }));
+        });
     }
 
     static boolean capturing() {
@@ -107,7 +115,7 @@ public final class SelfTest {
         } catch (InterruptedException ignored) {
         }
         String json = String.format("{\"loader\":\"%s\",\"mc\":\"%s\",\"results\":[%s]}%n",
-            "fabric", net.minecraft.SharedConstants.getCurrentVersion().name(), String.join(",", RESULTS));
+            HotAirBalloons.loader(), net.minecraft.SharedConstants.getCurrentVersion().name(), String.join(",", RESULTS));
         try {
             Files.createDirectories(Path.of(OUT));
             Files.writeString(Path.of(OUT, "results.json"), json);

@@ -9,7 +9,9 @@ import io.github.profetgit.hotairballoons.net.Net;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityDataRegistry;
+//? if >=1.20.5 {
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+//?}
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Registry;
@@ -41,8 +43,15 @@ public final class FabricEntry implements ModInitializer {
     }
 
     private static <T extends CustomPacketPayload> void toServer(CustomPacketPayload.Type<T> type, StreamCodec<RegistryFriendlyByteBuf, T> codec) {
+        //? if >=1.20.5 {
         PayloadTypeRegistry.serverboundPlay().register(type, codec);
         ServerPlayNetworking.registerGlobalReceiver(type, (payload, ctx) -> ctx.server().execute(() -> Net.onServer(ctx.player(), payload)));
+        //?} else {
+        /*ServerPlayNetworking.registerGlobalReceiver(type.id(), (server, player, handler, buf, sender) -> {
+            T payload = codec.decode(buf);
+            server.execute(() -> Net.onServer(player, payload));
+        });
+        *///?}
     }
 }
 //?}

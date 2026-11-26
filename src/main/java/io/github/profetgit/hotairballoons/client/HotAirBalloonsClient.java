@@ -136,7 +136,13 @@ public final class HotAirBalloonsClient {
     private static Input keys() {
         if (testInput != null) return testInput;
         var p = Minecraft.getInstance().player;
+        //? if >=1.21.2 {
         return p == null ? Input.EMPTY : p.input.keyPresses;
+        //?} else {
+        /*var in = p == null ? null : p.input;
+        return in == null ? Input.EMPTY : new Input(in.up, in.down, in.left, in.right, in.jumping, in.shiftKeyDown,
+            Minecraft.getInstance().options.keySprint.isDown());
+        *///?}
     }
 
     /** End of every client tick. */

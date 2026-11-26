@@ -62,6 +62,8 @@ tasks.processResources {
         "author" to project.property("mod.author"),
         "homepage" to project.property("mod.homepage"),
         "fabric_loader" to project.property("deps.fabric_loader"),
+        "mc_range" to ((findProperty("deps.mc_range") as String?) ?: "~$mc"),
+        "java" to "25",
     )
     inputs.properties(props)
     exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
@@ -71,3 +73,7 @@ tasks.processResources {
 tasks.named<Jar>("jar") {
     from(rootProject.file("LICENSE"))
 }
+
+extra["mcVersion"] = mc
+apply(from = rootProject.file("dev/data.gradle.kts"))
+if (mc != "26.3") apply(from = rootProject.file("../../tools/Backport/renames.gradle.kts"))

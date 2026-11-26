@@ -1,5 +1,6 @@
 package io.github.profetgit.hotairballoons.selftest;
 
+import io.github.profetgit.hotairballoons.Compat;
 import io.github.profetgit.hotairballoons.HotAirBalloons;
 import io.github.profetgit.hotairballoons.ModContent;
 import io.github.profetgit.hotairballoons.client.HotAirBalloonsClient;
@@ -62,7 +63,7 @@ final class Scenarios {
             .waitTicks(40)
             .check("world loaded", mc -> mc.player.isAlive() ? null : "player not alive");
         String only = System.getProperty("hotairballoons.selftest.scene", "all");
-        if (only.equals("all") || only.contains("ride")) ride(s);
+        if (only.equals("all") || only.equals("smoke") || only.contains("ride")) ride(s);
         if (only.equals("all") || only.contains("weather")) weather(s);
         if (only.equals("all") || only.contains("showcase")) showcase(s);
         if (only.equals("all") || only.contains("cargo")) cargo(s);
@@ -267,10 +268,14 @@ final class Scenarios {
                 mobs[3].discard();
                 b.setItem(0, new ItemStack(Items.DIAMOND, 5));
                 b.setItem(26, new ItemStack(Items.BREAD, 12));
+                HotAirBalloon copy = ModContent.BALLOON.create(b.level(), EntitySpawnReason.LOAD);
+                //? if >=1.21.6 {
                 var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, b.registryAccess());
                 b.saveWithoutId(out);
-                HotAirBalloon copy = ModContent.BALLOON.create(b.level(), EntitySpawnReason.LOAD);
                 copy.load(net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, b.registryAccess(), out.buildResult()));
+                //?} else {
+                /*copy.load(b.saveWithoutId(new net.minecraft.nbt.CompoundTag()));
+                *///?}
                 SelfTest.record("chest survives save and load", copy.hasChest() && copy.getItem(0).is(Items.DIAMOND) && copy.getItem(0).getCount() == 5
                     && copy.getItem(26).is(Items.BREAD), "chest " + copy.hasChest() + ", slot0 " + copy.getItem(0) + ", slot26 " + copy.getItem(26));
                 ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
@@ -425,16 +430,16 @@ final class Scenarios {
             .server(server -> {
                 ServerPlayer p = server.getPlayerList().getPlayers().getFirst();
                 HotAirBalloon b = serverBalloon(server);
-                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.BLUE), 2));
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Compat.dye(net.minecraft.world.item.DyeColor.BLUE), 2));
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
-                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.YELLOW), 2));
+                p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Compat.dye(net.minecraft.world.item.DyeColor.YELLOW), 2));
                 p.setShiftKeyDown(true);
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
                 p.setShiftKeyDown(false);
                 SelfTest.record("dye colours base, sneak-dye the stripes", b.look().base() == net.minecraft.world.item.DyeColor.BLUE
                     && b.look().stripes() == net.minecraft.world.item.DyeColor.YELLOW && p.getMainHandItem().getCount() == 1,
                     b.look() + ", hand " + p.getMainHandItem());
-                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK),
+                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Compat.banner(net.minecraft.world.item.DyeColor.BLACK),
                     net.minecraft.world.level.block.entity.BannerPatterns.CREEPER, net.minecraft.world.item.DyeColor.LIME));
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
                 SelfTest.record("banner repaints the envelope in its colours", b.look().emblemBase().orElse(null) == net.minecraft.world.item.DyeColor.BLACK
@@ -467,18 +472,18 @@ final class Scenarios {
                 HotAirBalloon b = serverBalloon(server);
                 p.teleportTo(at[0] + 3, at[1], at[2]);
                 p.getInventory().clearContent();
-                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.WHITE),
+                p.setItemInHand(InteractionHand.MAIN_HAND, banner(server, Compat.banner(net.minecraft.world.item.DyeColor.WHITE),
                     net.minecraft.world.level.block.entity.BannerPatterns.STRIPE_CENTER, net.minecraft.world.item.DyeColor.RED));
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
-                boolean back = p.getInventory().contains(st -> st.is(Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK))
+                boolean back = p.getInventory().contains(st -> st.is(Compat.banner(net.minecraft.world.item.DyeColor.BLACK))
                     && st.getOrDefault(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, net.minecraft.world.level.block.entity.BannerPatternLayers.EMPTY).layers().size() == 1);
                 SelfTest.record("new banner swaps in, old one comes back", back && b.look().emblemBase().orElse(null) == net.minecraft.world.item.DyeColor.WHITE,
                     "old back " + back + ", " + b.look());
                 p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.SHEARS));
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
-                boolean white = p.getInventory().contains(st -> st.is(Items.BANNER.pick(net.minecraft.world.item.DyeColor.WHITE)));
+                boolean white = p.getInventory().contains(st -> st.is(Compat.banner(net.minecraft.world.item.DyeColor.WHITE)));
                 SelfTest.record("shears take the emblem off", b.look().emblemBase().isEmpty() && white, b.look() + ", white banner back " + white);
-                b.setLook(b.look().withEmblem(net.minecraft.world.item.DyeColor.BLACK, banner(server, Items.BANNER.pick(net.minecraft.world.item.DyeColor.BLACK),
+                b.setLook(b.look().withEmblem(net.minecraft.world.item.DyeColor.BLACK, banner(server, Compat.banner(net.minecraft.world.item.DyeColor.BLACK),
                     net.minecraft.world.level.block.entity.BannerPatterns.CREEPER, net.minecraft.world.item.DyeColor.LIME)
                     .get(net.minecraft.core.component.DataComponents.BANNER_PATTERNS)));
                 var want = b.look();
@@ -525,7 +530,7 @@ final class Scenarios {
                     Object[] row = banners[i];
                     Object[] layers = java.util.Arrays.copyOfRange(row, 1, row.length);
                     var base = (net.minecraft.world.item.DyeColor) row[0];
-                    var patterns = banner(server, Items.BANNER.pick(base), layers).get(net.minecraft.core.component.DataComponents.BANNER_PATTERNS);
+                    var patterns = banner(server, Compat.banner(base), layers).get(net.minecraft.core.component.DataComponents.BANNER_PATTERNS);
                     HotAirBalloon g = ModContent.BALLOON.create(sl, EntitySpawnReason.COMMAND);
                     double x = bx - 21 + i * 14, z = at[2];
                     g.setInitialPos(x, sl.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z)), z);
@@ -645,8 +650,12 @@ final class Scenarios {
                 p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL, 2));
                 b.interact(p, InteractionHand.MAIN_HAND, b.position());
                 SelfTest.record("clicking with coal refuels", b.fuel() == 1600 && p.getMainHandItem().getCount() == 1, "fuel " + b.fuel() + ", hand " + p.getMainHandItem());
+                //? if >=1.21.2 {
                 var recipe = server.getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE,
                     io.github.profetgit.hotairballoons.HotAirBalloons.id("hot_air_balloon")));
+                //?} else {
+                /*var recipe = server.getRecipeManager().byKey(io.github.profetgit.hotairballoons.HotAirBalloons.id("hot_air_balloon"));
+                *///?}
                 SelfTest.record("balloon recipe loads", recipe.isPresent(), "");
                 b.setFuel(HotAirBalloon.MAX_FUEL);
                 b.teleportTo(b.getX(), 205, b.getZ());

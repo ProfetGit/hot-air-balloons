@@ -41,6 +41,76 @@
             "neoforge",
             "forge"
           ]
+        },
+        {
+          "mc": "26.2",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "26.2",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "26.1.2",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "26.1.2",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.21.11",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.21.11",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.21.1",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.21.1",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.20.1",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.20.1",
+          "loader": [
+            "forge",
+            "neoforge",
+            "quilt"
+          ],
+          "scenes": "smoke"
         }
       ]
     },
@@ -57,6 +127,76 @@
             "neoforge",
             "forge"
           ]
+        },
+        {
+          "mc": "26.2",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "26.2",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "26.1.2",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "26.1.2",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.21.11",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.21.11",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.21.1",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.21.1",
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": "1.20.1",
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "1.20.1",
+          "loader": [
+            "forge",
+            "neoforge",
+            "quilt"
+          ],
+          "scenes": "smoke"
         }
       ]
     }
@@ -118,7 +258,7 @@
           {
             "wait": "Watcher joined the game",
             "send": [
-              "tp Watcher 12.5 -60 0.5 90 -30",
+              "tp Watcher 8.5 -60 0.5 90 -30",
               "gamemode spectator Watcher"
             ]
           },

@@ -8,7 +8,9 @@ import java.util.Locale;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+//? if >=1.21.6 {
 import net.minecraft.client.renderer.RenderPipelines;
+//?}
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
@@ -64,7 +66,7 @@ public final class BalloonHud {
         g.fill(x - 1, cy - 1, x + CELL + 1, cy + CELL + 1, FRAME);
         g.fill(x, cy, x + CELL, cy + CELL, 0xC0303030);
         Vec3 here = b.wind();
-        arrow(g, x, cy, here, yaw);
+        arrow(g, mc, x, cy, here, yaw);
         double now = gain(here, yaw), up = -1, down = -1;
         int ground = b.level().getHeight(Heightmap.Types.MOTION_BLOCKING, b.getBlockX(), b.getBlockZ());
         for (int row = 0; row < HotAirBalloon.LADDER.length; row++) {
@@ -98,7 +100,7 @@ public final class BalloonHud {
         }
     }
 
-    private static void arrow(GuiGraphicsExtractor g, int x, int y, Vec3 w, float yaw) {
+    private static void arrow(GuiGraphicsExtractor g, Minecraft mc, int x, int y, Vec3 w, float yaw) {
         double speed = w.horizontalDistance();
         if (speed < 0.004) {
             g.fill(x + 4, y + 4, x + 5, y + 5, DEAD);
@@ -109,12 +111,36 @@ public final class BalloonHud {
         color = ARGB.color(0.55F + 0.45F * (float) Mth.clamp(speed / Wind.MAX_SPEED, 0, 1), color);
         int dir = Math.floorMod((int) Math.round(Wind.relativeAngle(w.x, w.z, yaw) / (Math.PI / 4)), 8);
         var pose = g.pose();
+        //? if >=1.21.6 {
         pose.pushMatrix();
         pose.translate(x + CELL / 2.0F, y + CELL / 2.0F);
         pose.rotate((dir / 2) * Mth.HALF_PI);
         pose.translate(-CELL / 2.0F, -CELL / 2.0F);
         g.blitSprite(RenderPipelines.GUI_TEXTURED, dir % 2 == 0 ? ARROW : DIAGONAL, 0, 0, CELL, CELL, color);
         pose.popMatrix();
+        //?} else if >=1.20.5 {
+        /*pose.pushPose();
+        pose.translate(x + CELL / 2.0F, y + CELL / 2.0F, 0);
+        pose.mulPose(com.mojang.math.Axis.ZP.rotation((dir / 2) * Mth.HALF_PI));
+        pose.translate(-CELL / 2.0F, -CELL / 2.0F, 0);
+        // the tinted blit (vertex colour, blending on): blitSprite takes no colour here
+        g.blit(0, 0, 0, CELL, CELL, mc.getGuiSprites().getSprite(dir % 2 == 0 ? ARROW : DIAGONAL), (color >> 16 & 0xFF) / 255.0F,
+            (color >> 8 & 0xFF) / 255.0F, (color & 0xFF) / 255.0F, (color >>> 24) / 255.0F);
+        pose.popPose();
+        *///?} else {
+        /*pose.pushPose();
+        pose.translate(x + CELL / 2.0F, y + CELL / 2.0F, 0);
+        pose.mulPose(com.mojang.math.Axis.ZP.rotation((dir / 2) * Mth.HALF_PI));
+        pose.translate(-CELL / 2.0F, -CELL / 2.0F, 0);
+        // before 1.20.2 the GUI has no sprite atlas: the arrow's own file, tinted
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        g.setColor((color >> 16 & 0xFF) / 255.0F, (color >> 8 & 0xFF) / 255.0F, (color & 0xFF) / 255.0F, (color >>> 24) / 255.0F);
+        Identifier sprite = dir % 2 == 0 ? ARROW : DIAGONAL;
+        g.blit(sprite.withPath(p -> "textures/gui/sprites/" + p + ".png"), 0, 0, 0.0F, 0.0F, CELL, CELL, CELL, CELL);
+        g.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
+        pose.popPose();
+        *///?}
     }
 
     /** A framed vertical bar, filled from the bottom. */

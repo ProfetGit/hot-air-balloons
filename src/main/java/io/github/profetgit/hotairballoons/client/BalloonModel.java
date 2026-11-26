@@ -1,7 +1,14 @@
 package io.github.profetgit.hotairballoons.client;
 
 import io.github.profetgit.hotairballoons.HotAirBalloons;
+//? if >=1.21.2 {
 import net.minecraft.client.model.EntityModel;
+//?} else {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.RenderType;
+*///?}
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -16,7 +23,12 @@ import org.joml.Vector3f;
  * frame to where their skirt end has swayed to, so they never come off the frame. Model space is the renderer's flipped
  * space: -y is up, 16 units per block.
  */
+//? if >=1.21.2 {
 public class BalloonModel extends EntityModel<BalloonRenderState> {
+//?} else {
+/*public class BalloonModel extends Model {
+    private final ModelPart root;
+*///?}
     public static final ModelLayerLocation LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "main");
     public static final ModelLayerLocation FLAME_LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "flame");
     public static final ModelLayerLocation ENVELOPE_LAYER = new ModelLayerLocation(HotAirBalloons.id("hot_air_balloon"), "envelope");
@@ -31,7 +43,12 @@ public class BalloonModel extends EntityModel<BalloonRenderState> {
     enum Part { MAIN, FLAME, ENVELOPE }
 
     public BalloonModel(ModelPart root, Part kind) {
+        //? if >=1.21.2 {
         super(root);
+        //?} else {
+        /*super(RenderType::entityCutoutNoCull);
+        this.root = root;
+        *///?}
         this.kind = kind;
         this.a = switch (kind) {
             case MAIN -> root.getChild("rigging");
@@ -55,9 +72,33 @@ public class BalloonModel extends EntityModel<BalloonRenderState> {
         return BalloonMesh.envelope();
     }
 
+    //? if >=1.21.2 {
     @Override
     public void setupAnim(BalloonRenderState state) {
         super.setupAnim(state);
+    //?} else if >=1.20.5 {
+    /*@Override
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, int color) {
+        root.render(poseStack, buffer, light, overlay, color);
+    }
+
+    public void setupAnim(BalloonRenderState state) {
+        root.getAllParts().forEach(ModelPart::resetPose);
+    *///?} else {
+    /*@Override
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, float r, float g, float b, float a) {
+        root.render(poseStack, buffer, light, overlay, r, g, b, a);
+    }
+
+    // The newer packed-colour form, which the renderer calls.
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, int color) {
+        renderToBuffer(poseStack, buffer, light, overlay, (color >> 16 & 0xFF) / 255.0F, (color >> 8 & 0xFF) / 255.0F,
+            (color & 0xFF) / 255.0F, (color >>> 24) / 255.0F);
+    }
+
+    public void setupAnim(BalloonRenderState state) {
+        root.getAllParts().forEach(ModelPart::resetPose);
+    *///?}
         if (kind == Part.FLAME) {
             float t = state.ageInTicks;
             float flicker = 1 + 0.08F * Mth.sin(t * 0.9F) * Mth.sin(t * 0.37F + 1) + 0.04F * Mth.sin(t * 1.7F + 2);

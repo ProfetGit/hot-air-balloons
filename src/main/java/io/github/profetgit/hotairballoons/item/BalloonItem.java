@@ -6,6 +6,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+//? if <1.21.2 {
+/*import net.minecraft.world.InteractionResultHolder;
+*///?}
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
@@ -24,8 +27,22 @@ public class BalloonItem extends Item {
         super(properties);
     }
 
+    //? if >=1.21.2 {
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        return place(level, player, hand);
+    }
+    //?} else {
+    /*@Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        InteractionResult r = place(level, player, hand);
+        if (r == InteractionResult.SUCCESS) return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        return new InteractionResultHolder<>(r, stack);
+    }
+    *///?}
+
+    private InteractionResult place(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         HitResult hit = getPlayerPOVHitResult(level, player, ClipContext.Fluid.ANY);
         if (!(hit instanceof BlockHitResult bhit) || hit.getType() != HitResult.Type.BLOCK) return InteractionResult.PASS;
@@ -50,10 +67,24 @@ public class BalloonItem extends Item {
         return InteractionResult.SUCCESS;
     }
 
+    //? if >=1.21.5 {
     @Override
     @SuppressWarnings("deprecation")
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, net.minecraft.world.item.component.TooltipDisplay display,
                                 java.util.function.Consumer<net.minecraft.network.chat.Component> out, net.minecraft.world.item.TooltipFlag flag) {
         stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT).addToTooltip(out);
     }
+    //?} else if >=1.20.5 {
+    /*@Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, java.util.List<net.minecraft.network.chat.Component> tooltip,
+                                net.minecraft.world.item.TooltipFlag flag) {
+        stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT).addToTooltip(tooltip::add);
+    }
+    *///?} else {
+    /*@Override
+    public void appendHoverText(ItemStack stack, Level level, java.util.List<net.minecraft.network.chat.Component> tooltip,
+                                net.minecraft.world.item.TooltipFlag flag) {
+        stack.getOrDefault(ModContent.ENVELOPE, io.github.profetgit.hotairballoons.entity.EnvelopeLook.DEFAULT).addToTooltip(tooltip::add);
+    }
+    *///?}
 }

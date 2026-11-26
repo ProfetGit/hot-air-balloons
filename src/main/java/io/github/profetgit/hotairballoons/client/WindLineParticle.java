@@ -7,9 +7,15 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
+//? if >=1.21.9 {
 import net.minecraft.client.particle.SingleQuadParticle;
-import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
+//?} else {
+/*import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.particle.ParticleRenderType;
+import net.minecraft.client.particle.TextureSheetParticle;
+*///?}
+import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -28,7 +34,11 @@ import org.jspecify.annotations.Nullable;
  * turned your head); the curl side is the one nearer world up, the texture is mirrored when the quad's front would face
  * away, and it fades when seen end-on.
  */
+//? if >=1.21.9 {
 public final class WindLineParticle extends SingleQuadParticle {
+//?} else {
+/*public final class WindLineParticle extends TextureSheetParticle {
+*///?}
     private static @Nullable SpriteSet sprites;
     private static final List<WindLineParticle> LIVE = new ArrayList<>();
 
@@ -52,7 +62,11 @@ public final class WindLineParticle extends SingleQuadParticle {
     private boolean mirrored;
 
     private WindLineParticle(ClientLevel level, HotAirBalloon balloon, int layer, Vec3 start, float size) {
+        //? if >=1.21.9 {
         super(level, balloon.getX() + start.x, balloon.getY() + start.y, balloon.getZ() + start.z, sprites.first());
+        //?} else {
+        /*super(level, balloon.getX() + start.x, balloon.getY() + start.y, balloon.getZ() + start.z);
+        *///?}
         this.balloon = balloon;
         this.layer = layer;
         this.row = layer < 0 ? 1 : layer > 0 ? 2 : -1;
@@ -145,7 +159,11 @@ public final class WindLineParticle extends SingleQuadParticle {
     }
 
     @Override
+    //? if >=1.21.9 {
     public void extract(QuadParticleRenderState state, Camera camera, float partialTick) {
+    //?} else {
+    /*public void render(VertexConsumer buffer, Camera camera, float partialTick) {
+    *///?}
         float fade = Math.min(1.0F, Math.min((age + partialTick) / FADE_IN, (lifetime - age - partialTick) / FADE_OUT));
         if (fade <= 0.0F) return;
         Vec3 cam = camera.position();
@@ -168,8 +186,31 @@ public final class WindLineParticle extends SingleQuadParticle {
         Vector3f z = new Vector3f(x).cross(y);
         Quaternionf rotation = new Quaternionf().setFromNormalized(new Matrix3f(x, y, z));
         alpha = ALPHA * fade * Mth.clamp((seen - 0.05F) / 0.45F, 0.0F, 1.0F);
+        //? if >=1.21.9 {
         extractRotatedQuad(state, rotation, (float) (px - cam.x), (float) (py - cam.y), (float) (pz - cam.z), partialTick);
+        //?} else {
+        /*renderRotatedQuad(buffer, rotation, (float) (px - cam.x), (float) (py - cam.y), (float) (pz - cam.z), partialTick);
+        *///?}
     }
+    //? if <1.20.5 {
+    /*// 1.20.5's SingleQuadParticle.renderRotatedQuad: the quad turned by the rotation, at (x, y, z) from the camera.
+    private void renderRotatedQuad(VertexConsumer buffer, Quaternionf rotation, float x, float y, float z, float partialTick) {
+        float size = getQuadSize(partialTick);
+        float u0 = getU0(), u1 = getU1(), v0 = getV0(), v1 = getV1();
+        int light = getLightColor(partialTick);
+        corner(buffer, rotation, x, y, z, 1.0F, -1.0F, size, u1, v1, light);
+        corner(buffer, rotation, x, y, z, 1.0F, 1.0F, size, u1, v0, light);
+        corner(buffer, rotation, x, y, z, -1.0F, 1.0F, size, u0, v0, light);
+        corner(buffer, rotation, x, y, z, -1.0F, -1.0F, size, u0, v1, light);
+    }
+
+    private void corner(VertexConsumer buffer, Quaternionf rotation, float x, float y, float z, float cx, float cy, float size,
+                        float u, float v, int light) {
+        Vector3f p = new Vector3f(cx, cy, 0.0F).rotate(rotation).mul(size).add(x, y, z);
+        buffer.vertex(p.x(), p.y(), p.z()).uv(u, v).color(rCol, gCol, bCol, alpha).uv2(light).endVertex();
+    }
+    *///?}
+
     @Override
     protected float getU0() {
         return mirrored ? sprite.getU1() : sprite.getU0();
@@ -181,9 +222,15 @@ public final class WindLineParticle extends SingleQuadParticle {
     }
 
     @Override
+    //? if >=1.21.9 {
     public SingleQuadParticle.Layer getLayer() {
         return SingleQuadParticle.Layer.TRANSLUCENT;
     }
+    //?} else {
+    /*public ParticleRenderType getRenderType() {
+        return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
+    }
+    *///?}
 
     /** Registers the sprite set; lines are spawned directly with {@link #spawn}. */
     public record Provider(SpriteSet set) implements ParticleProvider<SimpleParticleType> {
@@ -192,8 +239,13 @@ public final class WindLineParticle extends SingleQuadParticle {
         }
 
         @Override
+        //? if >=1.21.9 {
         public @Nullable Particle createParticle(SimpleParticleType type, ClientLevel level, double x, double y, double z,
                                                  double xa, double ya, double za, RandomSource random) {
+        //?} else {
+        /*public @Nullable Particle createParticle(SimpleParticleType type, ClientLevel level, double x, double y, double z,
+                                                 double xa, double ya, double za) {
+        *///?}
             return null;
         }
     }

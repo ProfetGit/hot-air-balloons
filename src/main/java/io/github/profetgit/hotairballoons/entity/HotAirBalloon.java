@@ -1,5 +1,6 @@
 package io.github.profetgit.hotairballoons.entity;
 
+import io.github.profetgit.hotairballoons.Compat;
 import io.github.profetgit.hotairballoons.Config;
 import io.github.profetgit.hotairballoons.ModContent;
 import java.util.List;
@@ -23,7 +24,9 @@ import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.HasCustomInventoryScreen;
 import net.minecraft.world.entity.SlotAccess;
+//? if >=1.21.5 {
 import net.minecraft.world.entity.InterpolationHandler;
+//?}
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
@@ -35,7 +38,9 @@ import net.minecraft.world.entity.vehicle.ContainerEntity;
 import net.minecraft.world.entity.vehicle.VehicleEntity;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
+//? if >=1.21.9 {
 import net.minecraft.world.entity.ContainerUser;
+//?}
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -43,8 +48,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+//? if >=1.21.6 {
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+//?} else {
+/*import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+*///?}
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -178,15 +188,37 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         entityData.set(DATA_LOOK, look);
     }
 
+    //? if >=1.21.6 {
     @Override
     public boolean isFlyingVehicle() {
         return true;
     }
+    //?} else {
+    /*// Before isFlyingVehicle, vanilla's float kick skips only vehicles without gravity.
+    @Override
+    public boolean isNoGravity() {
+        return true;
+    }
+    *///?}
 
+    //? if >=1.20.5 {
     @Override
     protected double getDefaultGravity() {
         return 0.0;
     }
+    //?} else {
+    /*// Before 1.20.5 the entity type has no eye height and the leash ticks only on mobs.
+    @Override
+    protected float getEyeHeight(net.minecraft.world.entity.Pose pose, EntityDimensions dimensions) {
+        return 0.9F;
+    }
+
+    @Override
+    public void baseTick() {
+        super.baseTick();
+        if (!level().isClientSide()) tickLeash();
+    }
+    *///?}
 
     @Override
     public boolean isPickable() {
@@ -195,7 +227,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /** Not as one solid box: the basket is a floor and walls ({@link BasketShape}) that people stand in. */
     @Override
+    //? if >=1.21.6 {
     public boolean canBeCollidedWith(@Nullable Entity other) {
+    //?} else {
+    /*public boolean canBeCollidedWith() {
+    *///?}
         return false;
     }
 
@@ -303,10 +339,99 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return false;
     }
 
+    //? if >=26.3 {
     @Override
     protected InterpolationHandler createInterpolationHandler() {
         return net.minecraft.world.entity.LinearInterpolationHandler.create(this, 3);
     }
+    //?} else if >=1.21.5 {
+    /*private final InterpolationHandler interpolation = new InterpolationHandler(this, 3);
+
+    @Override
+    public InterpolationHandler getInterpolation() {
+        return interpolation;
+    }
+    *///?} else if >=1.20.5 {
+    /*private int lerpSteps;
+    private double lerpX, lerpY, lerpZ, lerpYRot, lerpXRot;
+
+    // Client: where the server says the balloon is, reached in the same 3 ticks as the newer interpolation handler.
+    @Override
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+        lerpX = x;
+        lerpY = y;
+        lerpZ = z;
+        lerpYRot = yRot;
+        lerpXRot = xRot;
+        lerpSteps = 3;
+    }
+
+    @Override
+    public double lerpTargetX() {
+        return lerpSteps > 0 ? lerpX : getX();
+    }
+
+    @Override
+    public double lerpTargetY() {
+        return lerpSteps > 0 ? lerpY : getY();
+    }
+
+    @Override
+    public double lerpTargetZ() {
+        return lerpSteps > 0 ? lerpZ : getZ();
+    }
+
+    @Override
+    public float lerpTargetXRot() {
+        return lerpSteps > 0 ? (float) lerpXRot : getXRot();
+    }
+
+    @Override
+    public float lerpTargetYRot() {
+        return lerpSteps > 0 ? (float) lerpYRot : getYRot();
+    }
+
+    private void tickLerp() {
+        if (isControlledByLocalInstance()) {
+            lerpSteps = 0;
+            syncPacketPositionCodec(getX(), getY(), getZ());
+        }
+        if (lerpSteps > 0) {
+            lerpPositionAndRotationStep(lerpSteps, lerpX, lerpY, lerpZ, lerpYRot, lerpXRot);
+            lerpSteps--;
+        }
+    }
+    *///?} else {
+    /*private int lerpSteps;
+    private double lerpX, lerpY, lerpZ, lerpYRot, lerpXRot;
+
+    // Client: where the server says the balloon is, reached in the same 3 ticks as the newer interpolation handler.
+    @Override
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps, boolean teleport) {
+        lerpX = x;
+        lerpY = y;
+        lerpZ = z;
+        lerpYRot = yRot;
+        lerpXRot = xRot;
+        lerpSteps = 3;
+    }
+
+    private void tickLerp() {
+        if (isControlledByLocalInstance()) {
+            lerpSteps = 0;
+            syncPacketPositionCodec(getX(), getY(), getZ());
+        }
+        if (lerpSteps > 0) {
+            double x = getX() + (lerpX - getX()) / lerpSteps;
+            double y = getY() + (lerpY - getY()) / lerpSteps;
+            double z = getZ() + (lerpZ - getZ()) / lerpSteps;
+            setYRot(getYRot() + (float) Mth.wrapDegrees(lerpYRot - getYRot()) / lerpSteps);
+            setXRot(getXRot() + (float) (lerpXRot - getXRot()) / lerpSteps);
+            lerpSteps--;
+            setPos(x, y, z);
+        }
+    }
+    *///?}
 
     /** Heat for rendering: the local simulation when this client flies it, else the server's. */
     public float heat() {
@@ -382,6 +507,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         Vec3 from = new Vec3(xo, yo, zo);
         float fromYaw = yRotO;
         super.tick();
+        //? if <1.21.5 {
+        /*tickLerp();
+        *///?} else if <26.3 {
+        /*interpolation.interpolate();
+        *///?}
 
         Input in = pilotInput();
         boolean piloted = getControllingPassenger() instanceof Player;
@@ -530,9 +660,73 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
 
     /** The rope pull is ours (see {@link #fly}): vanilla's runs on the server only, but the pilot's client moves us. */
     @Override
+    //? if >=1.21.6 {
     public boolean checkElasticInteractions(Entity leashHolder, Leashable.LeashData leashData) {
         return false;
     }
+    //?} else {
+    /*public void elasticRangeLeashBehaviour(Entity leashHolder, float distance) {
+    }
+
+    // Vanilla's rope snaps at 10 before 1.21.6: keep the newer 12, measured the newer way (box centres).
+    @Override
+    public void leashTooFarBehaviour() {
+        Entity holder = getLeashHolder();
+        if (holder != null && holder.getBoundingBox().getCenter().distanceTo(getBoundingBox().getCenter()) > SNAP) dropLeash(true, true);
+    }
+
+    private static final double SNAP = 12.0;
+
+    // The lead actions of newer vanilla's Entity.interact: sneak-use ties the mobs on your leads to the balloon, shears
+    // cut every rope on it, and a lead takes its rope back off a fence.
+    private InteractionResult leads(Player player, InteractionHand hand) {
+        boolean client = level().isClientSide();
+        if (!client && player.isSecondaryUseActive() && isAlive()) {
+            boolean tied = false;
+            for (Leashable mob : leashedTo(player)) {
+                Entity e = (Entity) mob;
+                if (e == this || e.getBoundingBox().getCenter().distanceTo(getBoundingBox().getCenter()) > SNAP || !mob.canBeLeashed()) continue;
+                mob.setLeashedTo(this, true);
+                tied = true;
+            }
+            if (tied) {
+                level().gameEvent(GameEvent.ENTITY_ACTION, blockPosition(), GameEvent.Context.of(player));
+                playSound(SoundEvents.LEASH_KNOT_PLACE);
+                return InteractionResult.SUCCESS;
+            }
+        }
+        ItemStack held = player.getItemInHand(hand);
+        if (held.is(Items.SHEARS)) {
+            List<Leashable> ropes = new java.util.ArrayList<>(leashedTo(this));
+            if (isLeashed()) ropes.add(this);
+            if (!ropes.isEmpty()) {
+                if (!client) {
+                    ropes.forEach(l -> l.dropLeash(true, true));
+                    gameEvent(GameEvent.SHEAR, player);
+                    playSound(SoundEvents.LEASH_KNOT_BREAK);
+                    held.hurtAndBreak(1, player, LivingEntity.getSlotForHand(hand));
+                }
+                return InteractionResult.sidedSuccess(client);
+            }
+        }
+        Entity holder = getLeashHolder();
+        if (isAlive() && holder != null && !(holder instanceof Player) && held.is(Items.LEAD)) {
+            if (!client) {
+                dropLeash(true, true);
+                setLeashedTo(player, true);
+                playSound(SoundEvents.LEASH_KNOT_PLACE);
+                held.shrink(1);
+            }
+            return InteractionResult.sidedSuccess(client);
+        }
+        return InteractionResult.PASS;
+    }
+
+    private List<Leashable> leashedTo(Entity holder) {
+        return level().getEntitiesOfClass(Entity.class, AABB.ofSize(getBoundingBox().getCenter(), 32, 32, 32),
+            e -> e instanceof Leashable l && l.getLeashHolder() == holder).stream().map(Leashable.class::cast).toList();
+    }
+    *///?}
 
     /** Server, on the ground: mobs that walk into the basket climb in, like boats take them (players board by click). */
     private void boardMobs() {
@@ -540,10 +734,18 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         for (Entity e : level().getEntities(this, getBoundingBox().inflate(0.2, -0.01, 0.2), EntitySelector.pushableBy(this))) {
             if (mobsAboard() >= seats()) return;
             if (e instanceof LivingEntity && !(e instanceof Player) && !e.isPassenger() && !e.hasPassenger(this)
-                && !e.is(EntityTypeTags.CANNOT_BE_PUSHED_ONTO_BOATS) && e.getBbWidth() < MAX_MOB_WIDTH && !(e instanceof Leashable l && l.isLeashed())) {
+                && boardsBoats(e) && e.getBbWidth() < MAX_MOB_WIDTH && !(e instanceof Leashable l && l.isLeashed())) {
                 e.startRiding(this);
             }
         }
+    }
+
+    private static boolean boardsBoats(Entity e) {
+        //? if >=1.21.2 {
+        return !e.is(EntityTypeTags.CANNOT_BE_PUSHED_ONTO_BOATS);
+        //?} else {
+        /*return !(e instanceof net.minecraft.world.entity.animal.WaterAnimal);
+        *///?}
     }
 
     /**
@@ -578,7 +780,9 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         return null;
     }
 
+    //? if >=1.20.5 {
     @Override
+    //?}
     protected Vec3 getPassengerAttachmentPoint(Entity passenger, EntityDimensions dimensions, float scale) {
         int i = 0;
         for (Entity e : getPassengers()) {
@@ -639,8 +843,17 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
      * chest; sneak-use opens it; otherwise take the controls if nobody has them, or step into the basket if someone does.
      */
     @Override
+    //? if >=26.1 {
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
         InteractionResult r = super.interact(player, hand, location);
+    //?} else if >=1.21.6 {
+    /*public InteractionResult interact(Player player, InteractionHand hand) {
+        InteractionResult r = super.interact(player, hand);
+    *///?} else {
+    /*public InteractionResult interact(Player player, InteractionHand hand) {
+        InteractionResult r = leads(player, hand);
+        if (r == InteractionResult.PASS) r = super.interact(player, hand);
+    *///?}
         if (r != InteractionResult.PASS) return r;
         ItemStack held = player.getItemInHand(hand);
         InteractionResult looks = restyle(player, held);
@@ -684,7 +897,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
      */
     private InteractionResult restyle(Player player, ItemStack held) {
         EnvelopeLook look = look();
+        //? if >=26.1 {
         net.minecraft.world.item.DyeColor dye = held.get(net.minecraft.core.component.DataComponents.DYE);
+        //?} else {
+        /*net.minecraft.world.item.DyeColor dye = held.getItem() instanceof net.minecraft.world.item.DyeItem item ? item.getDyeColor() : null;
+        *///?}
         if (dye != null && !(held.getItem() instanceof net.minecraft.world.item.BannerItem)) {
             boolean stripes = player.isSecondaryUseActive();
             if ((stripes ? look.stripes() : look.base()) == dye) return InteractionResult.PASS;
@@ -721,7 +938,7 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     /** The banner an emblem was made from, to give back; empty without one. */
     private static ItemStack emblemBanner(EnvelopeLook look) {
         if (look.emblemBase().isEmpty()) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(Items.BANNER.pick(look.emblemBase().get()));
+        ItemStack stack = new ItemStack(Compat.banner(look.emblemBase().get()));
         if (!look.emblem().layers().isEmpty()) stack.set(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, look.emblem());
         return stack;
     }
@@ -787,8 +1004,15 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         int fuel = Math.max(0, fuel());
         if (burn <= 0 || fuel + burn > MAX_FUEL) return false;
         entityData.set(DATA_FUEL, fuel + burn);
+        //? if >=26.1 {
         var remainder = stack.getItem().getCraftingRemainder();
         ItemStack left = remainder == null ? ItemStack.EMPTY : remainder.create();
+        //?} else if >=1.21.2 {
+        /*ItemStack left = stack.getItem().getCraftingRemainder();
+        *///?} else {
+        /*Item remainder = stack.getItem().getCraftingRemainingItem();
+        ItemStack left = remainder == null ? ItemStack.EMPTY : new ItemStack(remainder);
+        *///?}
         if (player != null) stack.consume(1, player);
         else stack.shrink(1);
         if (!left.isEmpty() && getControllingPassenger() instanceof Player pilot) pilot.getInventory().placeItemBackInInventory(left, net.minecraft.util.Prediction.SERVER_ONLY);
@@ -796,12 +1020,18 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     }
 
     private int burnTime(ServerLevel sl, ItemStack stack) {
+        //? if >=26.3 {
         var params = new net.minecraft.world.level.storage.loot.LootParams.Builder(sl)
             .withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN, position())
             .create(net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.COMMAND);
         var ctx = new net.minecraft.world.level.storage.loot.LootContext.Builder(params).create(java.util.Optional.empty());
         return net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt.getFromItem(stack,
             net.minecraft.core.component.DataComponents.COOKING_FUEL, net.minecraft.world.item.component.CookingFuel::burnTime, ctx, 0);
+        //?} else if >=1.21.2 {
+        /*return sl.fuelValues().burnDuration(stack);
+        *///?} else {
+        /*return Compat.fuelTime.applyAsInt(stack);
+        *///?}
     }
 
     /** A balloon never falls freely (it sinks at most {@link BalloonPhysics#MAX_SINK}), so landing hurts nobody aboard. */
@@ -811,7 +1041,11 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     }
 
     @Override
+    //? if >=1.21.5 {
     public boolean causeFallDamage(double fallDistance, float damageModifier, DamageSource source) {
+    //?} else {
+    /*public boolean causeFallDamage(float fallDistance, float damageModifier, DamageSource source) {
+    *///?}
         return false;
     }
 
@@ -824,7 +1058,12 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     }
 
     @Override
+    //? if >=1.21.2 {
     public void destroy(ServerLevel level, DamageSource source) {
+    //?} else {
+    /*protected void destroy(DamageSource source) {
+        ServerLevel level = (ServerLevel) level();
+    *///?}
         if (!resting()) {
             for (Entity e : getPassengers()) {
                 if (e instanceof LivingEntity rider) rider.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOW_FALLING, 400));
@@ -940,10 +1179,17 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
     }
 
     @Override
+    //? if >=1.21.9 {
     public void stopOpen(ContainerUser user) {
         level().gameEvent(GameEvent.CONTAINER_CLOSE, position(), GameEvent.Context.of(user.getLivingEntity()));
     }
+    //?} else {
+    /*public void stopOpen(Player user) {
+        level().gameEvent(GameEvent.CONTAINER_CLOSE, position(), GameEvent.Context.of(user));
+    }
+    *///?}
 
+    //? if >=1.21.6 {
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         writeLeashData(output, leashData);
@@ -963,6 +1209,31 @@ public class HotAirBalloon extends VehicleEntity implements Leashable, HasCustom
         setLook(input.read("look", EnvelopeLook.CODEC).orElse(EnvelopeLook.DEFAULT));
         readChestVehicleSaveData(input);
     }
+    //?} else {
+    /*@Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        writeLeashData(tag, leashData);
+        tag.putFloat("heat", heat);
+        tag.putBoolean("chest", hasChest());
+        tag.putInt("fuel", fuel() == UNLIMITED ? savedFuel : Math.max(0, fuel()));
+        if (!look().equals(EnvelopeLook.DEFAULT)) {
+            EnvelopeLook.CODEC.encodeStart(registryAccess().createSerializationContext(NbtOps.INSTANCE), look())
+                .resultOrPartial().ifPresent(t -> tag.put("look", t));
+        }
+        if (hasChest()) addChestVehicleSaveData(tag, registryAccess());
+    }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        leashData = readLeashData(tag);
+        heat = tag.contains("heat") ? tag.getFloat("heat") : BalloonPhysics.NEUTRAL;
+        setChest(tag.getBoolean("chest"));
+        entityData.set(DATA_FUEL, tag.getInt("fuel"));
+        setLook(!tag.contains("look") ? EnvelopeLook.DEFAULT : EnvelopeLook.CODEC
+            .parse(registryAccess().createSerializationContext(NbtOps.INSTANCE), tag.get("look")).result().orElse(EnvelopeLook.DEFAULT));
+        readChestVehicleSaveData(tag, registryAccess());
+    }
+    *///?}
 
     @Override
     public Leashable.@Nullable LeashData getLeashData() {
