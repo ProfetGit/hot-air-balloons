@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.profetgit.hotairballoons.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "EmfEntityMixin",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "EntityCollideMixin",
+    "ServerGamePacketListenerImplMixin"
+  ]
+}

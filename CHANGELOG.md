@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Minecraft 1.21.1 on NeoForge (backport of 0.0.30). Same balloon, wind, fuel, chest and dyes. Not tested in game yet.
+
 ## 0.0.30
 
 Now also for NeoForge and Forge 26.3. The Fabric file works on Quilt (with Quilted Fabric API).
