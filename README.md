@@ -5,7 +5,7 @@
 <a href="https://ko-fi.com/profetgit"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/buttons/kofi.webp" alt="Ko-fi" width="23.96%"></a>
 </p>
 
-**Up, up and away.** Craft a hot air balloon from wool, string and a campfire, light the burner and drift over your world. Climb on the burner, let off heat to sink, steer a little and ride the wind, which blows a different way at every height. Take three friends or a few animals along, strap a chest to the basket, dye the envelope and fly your own banner on it. For Fabric on Minecraft 26.3, needed on the server and on every client.
+**Up, up and away.** Craft a hot air balloon from wool, string and a campfire, light the burner and drift over your world. Climb on the burner, let off heat to sink, steer a little and ride the wind, which blows a different way at every height. Take three friends or a few animals along, strap a chest to the basket, dye the envelope and fly your own banner on it. For Minecraft 26.3, 26.2, 26.1.2, 1.21.11, 1.21.1 and 1.20.1 on Fabric, Quilt, NeoForge and Forge, needed on the server and on every client.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/clips/liftoff.webp" alt="The envelope fills and the balloon lifts off" width="49%">
@@ -44,11 +44,11 @@ The gauges beside the hotbar show the heat (the white line is hover) and the fue
 
 ![Settings](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-settings.webp)
 
-Open the settings from Mod Menu. You can turn fuel off, change how fast the burner uses it, make the wind stronger or calmer, and stop mobs from climbing in. On a server, the server's `config/hotairballoons.json` decides.
+Open the settings from Mod Menu on Fabric and Quilt, or from the Mods list on NeoForge and Forge. You can turn fuel off, change how fast the burner uses it, make the wind stronger or calmer, and stop mobs from climbing in. On a server, the server's `config/hotairballoons.json` decides.
 
 ![Installation](https://raw.githubusercontent.com/ProfetGit/hot-air-balloons/main/docs/desc/title-installation.webp)
 
-Put the jar in the `mods` folder of the server and of every player, with **Fabric API**.
+Put the jar for your Minecraft version and loader in the `mods` folder of the server and of every player. Fabric and Quilt use the Fabric jar and need **Fabric API**; NeoForge and Forge need nothing else. On 1.20.1 one jar serves Forge and NeoForge.
 
 To uninstall, remove the jar. Balloons in the world disappear with it. Settings live in `config/hotairballoons.json`.
 

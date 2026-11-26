@@ -1,9 +1,8 @@
 # Changelog
 
-## 0.0.31
+## 0.0.31 — 2026-11-26
 
-- Now also for Minecraft 26.2, 26.1.2, 1.21.11, 1.21.1 and 1.20.1, on Fabric, Quilt (with Quilted Fabric API), Forge and NeoForge. On 1.20.1, NeoForge uses the Forge file.
-- NeoForge 1.21.1 started from the backport in pull request #2.
+- Now also for Minecraft 26.2, 26.1.2, 1.21.11, 1.21.1 and 1.20.1, on Fabric, Quilt, Forge and NeoForge. Fabric and Quilt need Fabric API. On 1.20.1, NeoForge uses the Forge file.
 - On 1.20.1 a gust sounds like a dragon's wing flap and the lead rope has the older, thinner look.
 
 ## 0.0.30
